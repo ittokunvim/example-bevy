@@ -63,41 +63,24 @@ fn setup(mut commands: Commands) {
         Slider,
     ));
 
-    // left reflector
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: Color::RED,
-                custom_size: Some(REFLECTOR_SIZE),
-                ..default()
-            },
-            transform: Transform {
-                translation: Vec3::new(-SLIDER_SIZE.x / 2.0, 0.0, 0.0),
-                ..default()
-            },
+    let refrector_sprite = |slider_pos_x: f32| SpriteBundle {
+        sprite: Sprite {
+            color: Color::RED,
+            custom_size: Some(REFLECTOR_SIZE),
             ..default()
         },
-        Reflector,
-        Collider,
-    ));
+        transform: Transform {
+            translation: Vec3::new(-slider_pos_x / 2.0, 0.0, 0.0),
+            ..default()
+        },
+        ..default()
+    };
+
+    // left reflector
+    commands.spawn((refrector_sprite(-SLIDER_SIZE.x), Reflector, Collider));
 
     // right reflector
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: Color::RED,
-                custom_size: Some(REFLECTOR_SIZE),
-                ..default()
-            },
-            transform: Transform {
-                translation: Vec3::new(SLIDER_SIZE.x / 2.0, 0.0, 0.0),
-                ..default()
-            },
-            ..default()
-        },
-        Reflector,
-        Collider,
-    ));
+    commands.spawn((refrector_sprite(SLIDER_SIZE.x), Reflector, Collider));
 
     // Cue
     commands.spawn((
