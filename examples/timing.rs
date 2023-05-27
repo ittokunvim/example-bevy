@@ -8,10 +8,14 @@ const SLIDER_SIZE: Vec2 = Vec2::new(500.0, 50.0);
 const REFLECTOR_SIZE: Vec2 = Vec2::new(1.0, 50.0);
 
 const CUE_SIZE: Vec2 = Vec2::new(5.0, 50.0);
-const CUE_SPEED: f32 = 100.0;
+const CUE_SPEED: f32 = 500.0;
 const INITIAL_CUE_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+
+const PERFECT_TIMING_RANGE: f32 = 10.0;
+const GOOD_TIMING_RANGE: f32 = 50.0;
+const OK_TIMING_RANGE: f32 = 150.0;
 
 fn main() {
     App::new()
@@ -24,13 +28,13 @@ fn main() {
         .add_systems((
             check_for_collisions,
             apply_velocity.before(check_for_collisions),
+            decide_timing
+                .before(check_for_collisions)
+                .after(apply_velocity),
         ))
         .add_system(bevy::window::close_on_esc)
         .run();
 }
-
-#[derive(Component)]
-struct Slider;
 
 #[derive(Component)]
 struct Cue;
@@ -51,17 +55,44 @@ fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 
     // Slider
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: Color::GRAY,
-                custom_size: Some(SLIDER_SIZE),
-                ..default()
-            },
+    commands.spawn(SpriteBundle {
+        sprite: Sprite {
+            color: Color::GRAY,
+            custom_size: Some(SLIDER_SIZE),
             ..default()
         },
-        Slider,
-    ));
+        ..default()
+    });
+
+    // Slider ok timing range
+    commands.spawn(SpriteBundle {
+        sprite: Sprite {
+            color: Color::GREEN,
+            custom_size: Some(Vec2::new(OK_TIMING_RANGE * 2.0, SLIDER_SIZE.y)),
+            ..default()
+        },
+        ..default()
+    });
+
+    // Slider good timing range
+    commands.spawn(SpriteBundle {
+        sprite: Sprite {
+            color: Color::RED,
+            custom_size: Some(Vec2::new(GOOD_TIMING_RANGE * 2.0, SLIDER_SIZE.y)),
+            ..default()
+        },
+        ..default()
+    });
+
+    // Slider parfect timing range
+    commands.spawn(SpriteBundle {
+        sprite: Sprite {
+            color: Color::BLUE,
+            custom_size: Some(Vec2::new(PERFECT_TIMING_RANGE * 2.0, SLIDER_SIZE.y)),
+            ..default()
+        },
+        ..default()
+    });
 
     let refrector_sprite = |slider_pos_x: f32| SpriteBundle {
         sprite: Sprite {
@@ -129,6 +160,25 @@ fn check_for_collisions(
             if reflect_x {
                 cue_velocity.x = -cue_velocity.x;
             }
+        }
+    }
+}
+
+fn decide_timing(keyboard_input: Res<Input<KeyCode>>, query: Query<&Transform, With<Cue>>) {
+    let cue_transform = query.single();
+
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        let cue_translation_x = cue_transform.translation.x;
+        println!("{}", cue_translation_x);
+
+        if cue_translation_x < PERFECT_TIMING_RANGE && cue_translation_x > -PERFECT_TIMING_RANGE {
+            println!("Perfect timing!");
+        } else if cue_translation_x < GOOD_TIMING_RANGE && cue_translation_x > -GOOD_TIMING_RANGE {
+            println!("Good timing!");
+        } else if cue_translation_x < OK_TIMING_RANGE && cue_translation_x > -OK_TIMING_RANGE {
+            println!("OK timing!");
+        } else {
+            println!("Bad timing!");
         }
     }
 }
