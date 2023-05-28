@@ -17,9 +17,13 @@ const PERFECT_TIMING_RANGE: f32 = 10.0;
 const GOOD_TIMING_RANGE: f32 = 50.0;
 const OK_TIMING_RANGE: f32 = 150.0;
 
+const SCOREBOARD_FONT_SIZE: f32 = 40.0;
+const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .insert_resource(Scoreboard { score: 0 })
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         // Configure how frequently our gameplay systems are run
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
@@ -32,6 +36,7 @@ fn main() {
                 .before(check_for_collisions)
                 .after(apply_velocity),
         ))
+        .add_system(update_scoreboard)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -51,7 +56,12 @@ struct Collider;
 #[derive(Default)]
 struct CollisionEvent;
 
-fn setup(mut commands: Commands) {
+#[derive(Resource)]
+struct Scoreboard {
+    score: isize,
+}
+
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
 
     // Slider
@@ -126,6 +136,36 @@ fn setup(mut commands: Commands) {
         Cue,
         Velocity(INITIAL_CUE_DIRECTION.normalize() * CUE_SPEED),
     ));
+
+    // Scoreboard
+    commands.spawn(
+        TextBundle::from_sections([
+            TextSection::new(
+                "Score: ",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: Color::BLACK,
+                    ..default()
+                },
+            ),
+            TextSection::from_style(TextStyle {
+                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: Color::GRAY,
+                ..default()
+            }),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                top: SCOREBOARD_TEXT_PADDING,
+                left: SCOREBOARD_TEXT_PADDING,
+                ..default()
+            },
+            ..default()
+        }),
+    );
 }
 
 fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
@@ -164,7 +204,11 @@ fn check_for_collisions(
     }
 }
 
-fn decide_timing(keyboard_input: Res<Input<KeyCode>>, query: Query<&Transform, With<Cue>>) {
+fn decide_timing(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut scoreboard: ResMut<Scoreboard>,
+    query: Query<&Transform, With<Cue>>,
+) {
     let cue_transform = query.single();
 
     if keyboard_input.just_pressed(KeyCode::Space) {
@@ -172,13 +216,18 @@ fn decide_timing(keyboard_input: Res<Input<KeyCode>>, query: Query<&Transform, W
         println!("{}", cue_translation_x);
 
         if cue_translation_x < PERFECT_TIMING_RANGE && cue_translation_x > -PERFECT_TIMING_RANGE {
-            println!("Perfect timing!");
+            scoreboard.score += 100;
         } else if cue_translation_x < GOOD_TIMING_RANGE && cue_translation_x > -GOOD_TIMING_RANGE {
-            println!("Good timing!");
+            scoreboard.score += 50;
         } else if cue_translation_x < OK_TIMING_RANGE && cue_translation_x > -OK_TIMING_RANGE {
-            println!("OK timing!");
+            scoreboard.score += 10;
         } else {
-            println!("Bad timing!");
+            scoreboard.score += -100;
         }
     }
+}
+
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
+    let mut text = query.single_mut();
+    text.sections[1].value = scoreboard.score.to_string();
 }
