@@ -11,8 +11,6 @@ const CUE_SIZE: Vec2 = Vec2::new(5.0, 50.0);
 const CUE_SPEED: f32 = 500.0;
 const INITIAL_CUE_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
 
-const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
-
 const PERFECT_TIMING_RANGE: f32 = 10.0;
 const GOOD_TIMING_RANGE: f32 = 50.0;
 const OK_TIMING_RANGE: f32 = 150.0;
@@ -20,23 +18,29 @@ const OK_TIMING_RANGE: f32 = 150.0;
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 
+const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+const SLIDER_DEFAULT_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
+const SLIDER_OK_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
+const SLIDER_GOOD_COLOR: Color = Color::rgb(0.6, 0.6, 0.6);
+const SLIDER_PERFECT_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+const REFRECTOR_COLOR: Color = Color::rgb(0.4, 0.4, 0.4);
+const CUE_COLOR: Color = Color::rgb(0.4, 0.4, 0.4);
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(Scoreboard { score: 0 })
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         // Configure how frequently our gameplay systems are run
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
-        .add_event::<CollisionEvent>()
+        .insert_resource(Scoreboard { score: 0 })
+        // .add_event::<CollisionEvent>()
         .add_event::<TimingEvent>()
         .add_startup_system(setup)
         .add_systems((
             check_for_collisions,
             apply_velocity.before(check_for_collisions),
-            decide_timing
-                .before(check_for_collisions)
-                .after(apply_velocity),
-            play_timing_sound.after(check_for_collisions),
+            decide_timing.after(apply_velocity),
+            play_timing_sound.after(decide_timing),
         ))
         .add_system(update_scoreboard)
         .add_system(bevy::window::close_on_esc)
@@ -55,8 +59,8 @@ struct Velocity(Vec2);
 #[derive(Component)]
 struct Collider;
 
-#[derive(Default)]
-struct CollisionEvent;
+// #[derive(Default)]
+// struct CollisionEvent;
 
 #[derive(Default)]
 struct TimingEvent;
@@ -79,7 +83,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Slider
     commands.spawn(SpriteBundle {
         sprite: Sprite {
-            color: Color::GRAY,
+            color: SLIDER_DEFAULT_COLOR,
             custom_size: Some(SLIDER_SIZE),
             ..default()
         },
@@ -89,7 +93,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Slider ok timing range
     commands.spawn(SpriteBundle {
         sprite: Sprite {
-            color: Color::GREEN,
+            color: SLIDER_OK_COLOR,
             custom_size: Some(Vec2::new(OK_TIMING_RANGE * 2.0, SLIDER_SIZE.y)),
             ..default()
         },
@@ -99,7 +103,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Slider good timing range
     commands.spawn(SpriteBundle {
         sprite: Sprite {
-            color: Color::RED,
+            color: SLIDER_GOOD_COLOR,
             custom_size: Some(Vec2::new(GOOD_TIMING_RANGE * 2.0, SLIDER_SIZE.y)),
             ..default()
         },
@@ -109,7 +113,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Slider parfect timing range
     commands.spawn(SpriteBundle {
         sprite: Sprite {
-            color: Color::BLUE,
+            color: SLIDER_PERFECT_COLOR,
             custom_size: Some(Vec2::new(PERFECT_TIMING_RANGE * 2.0, SLIDER_SIZE.y)),
             ..default()
         },
@@ -118,7 +122,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let refrector_sprite = |slider_pos_x: f32| SpriteBundle {
         sprite: Sprite {
-            color: Color::RED,
+            color: REFRECTOR_COLOR,
             custom_size: Some(REFLECTOR_SIZE),
             ..default()
         },
@@ -139,7 +143,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
-                color: Color::YELLOW,
+                color: CUE_COLOR,
                 custom_size: Some(CUE_SIZE),
                 ..default()
             },
@@ -229,7 +233,6 @@ fn decide_timing(
         timing_events.send_default();
 
         let cue_translation_x = cue_transform.translation.x;
-        println!("{}", cue_translation_x);
 
         if cue_translation_x < PERFECT_TIMING_RANGE && cue_translation_x > -PERFECT_TIMING_RANGE {
             scoreboard.score += 100;
