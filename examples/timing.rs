@@ -28,6 +28,7 @@ fn main() {
         // Configure how frequently our gameplay systems are run
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_event::<CollisionEvent>()
+        .add_event::<TimingEvent>()
         .add_startup_system(setup)
         .add_systems((
             check_for_collisions,
@@ -35,6 +36,7 @@ fn main() {
             decide_timing
                 .before(check_for_collisions)
                 .after(apply_velocity),
+            play_timing_sound.after(check_for_collisions),
         ))
         .add_system(update_scoreboard)
         .add_system(bevy::window::close_on_esc)
@@ -56,6 +58,12 @@ struct Collider;
 #[derive(Default)]
 struct CollisionEvent;
 
+#[derive(Default)]
+struct TimingEvent;
+
+#[derive(Resource)]
+struct TimingSound(Handle<AudioSource>);
+
 #[derive(Resource)]
 struct Scoreboard {
     score: isize,
@@ -63,6 +71,10 @@ struct Scoreboard {
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
+
+    // Sound
+    let cue_timing_sound = asset_server.load("sounds/timing_decide.ogg");
+    commands.insert_resource(TimingSound(cue_timing_sound));
 
     // Slider
     commands.spawn(SpriteBundle {
@@ -208,10 +220,14 @@ fn decide_timing(
     keyboard_input: Res<Input<KeyCode>>,
     mut scoreboard: ResMut<Scoreboard>,
     query: Query<&Transform, With<Cue>>,
+    mut timing_events: EventWriter<TimingEvent>,
 ) {
     let cue_transform = query.single();
 
     if keyboard_input.just_pressed(KeyCode::Space) {
+        // Sends a timing event so that other systems can react to the timing
+        timing_events.send_default();
+
         let cue_translation_x = cue_transform.translation.x;
         println!("{}", cue_translation_x);
 
@@ -230,4 +246,17 @@ fn decide_timing(
 fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
     let mut text = query.single_mut();
     text.sections[1].value = scoreboard.score.to_string();
+}
+
+fn play_timing_sound(
+    mut timing_events: EventReader<TimingEvent>,
+    audio: Res<Audio>,
+    sound: Res<TimingSound>,
+) {
+    // Play a sound once per frame if a timing occurred.
+    if !timing_events.is_empty() {
+        // This prevents events staying active on the next frame.
+        timing_events.clear();
+        audio.play(sound.0.clone());
+    }
 }
