@@ -1,4 +1,8 @@
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
+use bevy::{
+    prelude::*,
+    sprite::collide_aabb::{collide, Collision},
+    sprite::MaterialMesh2dBundle,
+};
 use rand::distributions::{Distribution, Uniform};
 
 const BALL_COUNT: u32 = 100;
@@ -21,17 +25,24 @@ fn main() {
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
-        .add_system(apply_velocity)
+        .add_systems((apply_velocity, check_for_collisions))
         .add_system(bevy::window::close_on_esc)
         .run();
 }
 
+#[derive(Component)]
+struct Ball;
+
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
+
+#[derive(Component)]
+struct Collider;
 
 #[derive(Bundle)]
 struct WallBundle {
     sprite_bundle: SpriteBundle,
+    collider: Collider,
 }
 
 enum WallLocation {
@@ -81,6 +92,7 @@ impl WallBundle {
                 },
                 ..default()
             },
+            collider: Collider,
         }
     }
 }
@@ -118,6 +130,7 @@ fn setup(
                     .with_scale(BALL_SIZE),
                 ..default()
             },
+            Ball,
             Velocity(Vec2::new(ball_velocity_x, ball_velocity_y) * BALL_SPEED),
         ));
     }
@@ -127,5 +140,43 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<
     for (mut transform, velocity) in &mut query {
         transform.translation.x += velocity.x * time_step.period.as_secs_f32();
         transform.translation.y += velocity.y * time_step.period.as_secs_f32();
+    }
+}
+
+fn check_for_collisions(
+    mut balls_query: Query<(&mut Velocity, &Transform), With<Ball>>,
+    collider_query: Query<&Transform, With<Collider>>,
+) {
+    for (mut ball_velocity, ball_transform) in balls_query.iter_mut() {
+        let ball_size = ball_transform.scale.truncate();
+
+        for transform in &collider_query {
+            let collision = collide(
+                ball_transform.translation,
+                ball_size,
+                transform.translation,
+                transform.scale.truncate(),
+            );
+            if let Some(collision) = collision {
+                let mut reflect_x = false;
+                let mut reflect_y = false;
+
+                match collision {
+                    Collision::Left => reflect_x = ball_velocity.x > 0.0,
+                    Collision::Right => reflect_x = ball_velocity.x < 0.0,
+                    Collision::Top => reflect_y = ball_velocity.y < 0.0,
+                    Collision::Bottom => reflect_y = ball_velocity.y > 0.0,
+                    Collision::Inside => { /* do nothing */ }
+                }
+
+                if reflect_x {
+                    ball_velocity.x = -ball_velocity.x;
+                }
+
+                if reflect_y {
+                    ball_velocity.y = -ball_velocity.y;
+                }
+            }
+        }
     }
 }
