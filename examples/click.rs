@@ -2,6 +2,7 @@ use bevy::{
     prelude::*,
     sprite::collide_aabb::{collide, Collision},
     sprite::MaterialMesh2dBundle,
+    window::PrimaryWindow,
 };
 use rand::distributions::{Distribution, Uniform};
 
@@ -25,7 +26,7 @@ fn main() {
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
-        .add_systems((apply_velocity, check_for_collisions))
+        .add_systems((apply_velocity, check_for_collisions, mouse_click))
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -178,5 +179,22 @@ fn check_for_collisions(
                 }
             }
         }
+    }
+}
+
+fn mouse_click(
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    mouse_event: Res<Input<MouseButton>>,
+) {
+    let window = window_query.single();
+
+    if mouse_event.just_pressed(MouseButton::Left) {
+        let mut cursor_position = window.cursor_position().unwrap();
+        let window_center = Vec2::new(window.width() / 2., window.height() / 2.);
+        cursor_position = Vec2::new(
+            cursor_position.x - window_center.x,
+            cursor_position.y - window_center.y,
+        );
+        println!("Mouse click at {:?}", cursor_position);
     }
 }
