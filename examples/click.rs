@@ -6,8 +6,8 @@ use bevy::{
 };
 use rand::distributions::{Distribution, Uniform};
 
-const BALL_COUNT: u32 = 100;
-const BALL_SIZE: Vec3 = Vec3::new(30.0, 30.0, 0.0);
+const BALL_COUNT: u32 = 30;
+const BALL_SIZE: Vec3 = Vec3::new(50.0, 50.0, 0.0);
 const BALL_SPEED: f32 = 400.0;
 
 const WALL_THICKNESS: f32 = 10.0;
@@ -183,8 +183,10 @@ fn check_for_collisions(
 }
 
 fn mouse_click(
+    mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
     mouse_event: Res<Input<MouseButton>>,
+    balls_query: Query<(Entity, &Transform), With<Ball>>,
 ) {
     let window = window_query.single();
 
@@ -195,6 +197,13 @@ fn mouse_click(
             cursor_position.x - window_center.x,
             cursor_position.y - window_center.y,
         );
-        println!("Mouse click at {:?}", cursor_position);
+
+        for (ball_entity, ball_transform) in balls_query.iter() {
+            let ball_pos = ball_transform.translation.truncate();
+            let distance = cursor_position.distance(ball_pos);
+            if distance < BALL_SIZE.x - 10.0 {
+                commands.entity(ball_entity).despawn();
+            }
+        }
     }
 }
