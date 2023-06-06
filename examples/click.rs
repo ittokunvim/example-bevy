@@ -6,7 +6,7 @@ use bevy::{
 };
 use rand::distributions::{Distribution, Uniform};
 
-const BALL_COUNT: u32 = 30;
+const BALL_COUNT: usize = 30;
 const BALL_SIZE: Vec3 = Vec3::new(50.0, 50.0, 0.0);
 const BALL_SPEED: f32 = 400.0;
 
@@ -16,17 +16,26 @@ const RIGHT_WALL: f32 = 450.0;
 const BOTTOM_WALL: f32 = -300.0;
 const TOP_WALL: f32 = 300.0;
 
+const SCOREBOARD_FONT_SIZE: f32 = 40.0;
+const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
+
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const BALL_COLOR: Color = Color::rgb(0.9, 0.3, 0.3);
 const WALL_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
+const TEXT_COLOR: Color = Color::rgb(0.5, 0.5, 1.0);
+const SCORE_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(Scoreboard {
+            ball_count: BALL_COUNT,
+        })
         .add_startup_system(setup)
         .add_systems((apply_velocity, check_for_collisions, mouse_click))
+        .add_system(update_scoreboard)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -98,10 +107,16 @@ impl WallBundle {
     }
 }
 
+#[derive(Resource)]
+struct Scoreboard {
+    ball_count: usize,
+}
+
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     // Camera
     commands.spawn(Camera2dBundle::default());
@@ -135,6 +150,39 @@ fn setup(
             Velocity(Vec2::new(ball_velocity_x, ball_velocity_y) * BALL_SPEED),
         ));
     }
+
+    // Scoreboard
+    commands.spawn(
+        TextBundle::from_sections([
+            TextSection::new(
+                "Score: ",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: TEXT_COLOR,
+                    ..default()
+                },
+            ),
+            TextSection::new(
+                BALL_COUNT.to_string(),
+                TextStyle {
+                    font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: SCORE_COLOR,
+                    ..default()
+                },
+            ),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                top: SCOREBOARD_TEXT_PADDING,
+                left: SCOREBOARD_TEXT_PADDING,
+                ..default()
+            },
+            ..default()
+        }),
+    );
 }
 
 fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
@@ -184,6 +232,7 @@ fn check_for_collisions(
 
 fn mouse_click(
     mut commands: Commands,
+    mut scoreboard: ResMut<Scoreboard>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     mouse_event: Res<Input<MouseButton>>,
     balls_query: Query<(Entity, &Transform), With<Ball>>,
@@ -202,8 +251,14 @@ fn mouse_click(
             let ball_pos = ball_transform.translation.truncate();
             let distance = cursor_position.distance(ball_pos);
             if distance < BALL_SIZE.x - 10.0 {
+                scoreboard.ball_count -= 1;
                 commands.entity(ball_entity).despawn();
             }
         }
     }
+}
+
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
+    let mut text = query.single_mut();
+    text.sections[1].value = scoreboard.ball_count.to_string();
 }
