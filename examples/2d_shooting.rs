@@ -27,12 +27,16 @@ fn main() {
         .add_system(apply_velocity)
         .add_system(move_player)
         .add_system(shot_player)
+        .add_system(remove_bullet)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
 
 #[derive(Component)]
 struct Player;
+
+#[derive(Component)]
+struct Bullet;
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
@@ -126,7 +130,26 @@ fn shot_player(
                 transform: Transform::from_translation(player_transform.translation),
                 ..default()
             },
+            Bullet,
             Velocity(Vec2::new(0., 0.5) * BULLET_SPEED),
         ));
+    }
+}
+
+fn remove_bullet(mut commands: Commands, bullet_query: Query<(Entity, &Transform), With<Bullet>>) {
+    let window_half_x = WINDOW_SIZE.x / 2.0;
+    let window_half_y = WINDOW_SIZE.y / 2.0;
+
+    for (bullet_entity, bullet_transform) in bullet_query.iter() {
+        let bullet_pos = bullet_transform.translation;
+
+        if bullet_pos.x < -window_half_x
+            || bullet_pos.x > window_half_x
+            || bullet_pos.y < -window_half_y
+            || bullet_pos.y > window_half_y
+        {
+            println!("Bullet out of bounds");
+            commands.entity(bullet_entity).despawn();
+        }
     }
 }
