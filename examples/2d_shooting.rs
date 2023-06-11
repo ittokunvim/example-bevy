@@ -1,6 +1,7 @@
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 
 const WINDOW_SIZE: Vec2 = Vec2::new(700.0, 700.0);
+const WINDOW_HALF_SIZE: Vec2 = Vec2::new(WINDOW_SIZE.x / 2.0, WINDOW_SIZE.y / 2.0);
 
 const PLAYER_SPEED: f32 = 200.0;
 const PLAYER_SIZE: f32 = 30.0;
@@ -99,14 +100,14 @@ fn move_player(
     // Player x movement
     let new_player_position_x = player_transform.translation.x
         + direction.x * PLAYER_SPEED * time_step.period.as_secs_f32();
-    let left_bound = -WINDOW_SIZE.x / 2.0 + PLAYER_SIZE / 2.0 + PLAYER_PADDING;
-    let right_bound = WINDOW_SIZE.x / 2.0 - PLAYER_SIZE / 2.0 - PLAYER_PADDING;
+    let left_bound = -WINDOW_HALF_SIZE.x + PLAYER_SIZE / 2.0 + PLAYER_PADDING;
+    let right_bound = WINDOW_HALF_SIZE.x - PLAYER_SIZE / 2.0 - PLAYER_PADDING;
 
     // Player y movement
     let new_player_position_y = player_transform.translation.y
         + direction.y * PLAYER_SPEED * time_step.period.as_secs_f32();
-    let up_bound = -WINDOW_SIZE.y / 2.0 + PLAYER_SIZE / 2.0 + PLAYER_PADDING;
-    let down_bound = WINDOW_SIZE.y / 2.0 - PLAYER_SIZE / 2.0 - PLAYER_PADDING;
+    let up_bound = -WINDOW_HALF_SIZE.y + PLAYER_SIZE / 2.0 + PLAYER_PADDING;
+    let down_bound = WINDOW_HALF_SIZE.y - PLAYER_SIZE / 2.0 - PLAYER_PADDING;
 
     player_transform.translation.x = new_player_position_x.clamp(left_bound, right_bound);
     player_transform.translation.y = new_player_position_y.clamp(up_bound, down_bound);
@@ -137,16 +138,13 @@ fn shot_player(
 }
 
 fn remove_bullet(mut commands: Commands, bullet_query: Query<(Entity, &Transform), With<Bullet>>) {
-    let window_half_x = WINDOW_SIZE.x / 2.0;
-    let window_half_y = WINDOW_SIZE.y / 2.0;
-
     for (bullet_entity, bullet_transform) in bullet_query.iter() {
         let bullet_pos = bullet_transform.translation;
 
-        if bullet_pos.x < -window_half_x
-            || bullet_pos.x > window_half_x
-            || bullet_pos.y < -window_half_y
-            || bullet_pos.y > window_half_y
+        if bullet_pos.x < -WINDOW_HALF_SIZE.x
+            || bullet_pos.x > WINDOW_HALF_SIZE.x
+            || bullet_pos.y < -WINDOW_HALF_SIZE.y
+            || bullet_pos.y > WINDOW_HALF_SIZE.y
         {
             println!("Bullet out of bounds");
             commands.entity(bullet_entity).despawn();
