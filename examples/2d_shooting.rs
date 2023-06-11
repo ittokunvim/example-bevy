@@ -4,11 +4,14 @@ const WINDOW_SIZE: Vec2 = Vec2::new(700.0, 700.0);
 const WINDOW_HALF_SIZE: Vec2 = Vec2::new(WINDOW_SIZE.x / 2.0, WINDOW_SIZE.y / 2.0);
 
 const PLAYER_SPEED: f32 = 200.0;
-const PLAYER_SIZE: f32 = 30.0;
+const PLAYER_SIZE: f32 = 15.0;
 const GAP_BETWEEN_PLAYER_AND_FLOOR: f32 = 40.0;
 const PLAYER_PADDING: f32 = 20.0;
 
+const ENEMY_SPEED: f32 = 100.0;
 const ENEMY_SIZE: f32 = 15.0;
+const GAP_BETWEEN_ENEMY_AND_TOP: f32 = 40.0;
+const INITIAL_ENEMY_DIRECTION: Vec2 = Vec2::new(-0.5, 0.0);
 
 const BULLET_SPEED: f32 = 800.0;
 
@@ -31,6 +34,7 @@ fn main() {
         .add_system(apply_velocity)
         .add_system(move_player)
         .add_system(shot_player)
+        .add_system(move_enemy)
         .add_system(remove_bullet)
         .add_system(bevy::window::close_on_esc)
         .run();
@@ -72,7 +76,7 @@ fn setup(
     ));
 
     // Enemy
-    let enemy_y = WINDOW_HALF_SIZE.y - GAP_BETWEEN_PLAYER_AND_FLOOR;
+    let enemy_y = WINDOW_HALF_SIZE.y - GAP_BETWEEN_ENEMY_AND_TOP;
 
     commands.spawn((
         MaterialMesh2dBundle {
@@ -84,6 +88,7 @@ fn setup(
             ..default()
         },
         Enemy,
+        Velocity(INITIAL_ENEMY_DIRECTION.normalize() * ENEMY_SPEED),
     ));
 }
 
@@ -155,6 +160,18 @@ fn shot_player(
             Bullet,
             Velocity(Vec2::new(0., 0.5) * BULLET_SPEED),
         ));
+    }
+}
+
+fn move_enemy(mut enemy_query: Query<(&Transform, &mut Velocity), With<Enemy>>) {
+    let (enemy_transform, mut enemy_velocity) = enemy_query.single_mut();
+    let left_wall_collision =
+        WINDOW_HALF_SIZE.x < enemy_transform.translation.x + ENEMY_SIZE / 2.0 + 10.0;
+    let right_wall_collision =
+        -WINDOW_HALF_SIZE.x > enemy_transform.translation.x - ENEMY_SIZE / 2.0 - 10.0;
+
+    if left_wall_collision || right_wall_collision {
+        enemy_velocity.x = -enemy_velocity.x;
     }
 }
 
