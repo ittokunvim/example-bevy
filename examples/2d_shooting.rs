@@ -8,10 +8,13 @@ const PLAYER_SIZE: f32 = 30.0;
 const GAP_BETWEEN_PLAYER_AND_FLOOR: f32 = 40.0;
 const PLAYER_PADDING: f32 = 20.0;
 
+const ENEMY_SIZE: f32 = 15.0;
+
 const BULLET_SPEED: f32 = 800.0;
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
 const PLAYER_COLOR: Color = Color::rgb(0.3, 0.9, 0.3);
+const ENEMY_COLOR: Color = Color::rgb(0.9, 0.3, 0.3);
 
 fn main() {
     App::new()
@@ -35,6 +38,9 @@ fn main() {
 
 #[derive(Component)]
 struct Player;
+
+#[derive(Component)]
+struct Enemy;
 
 #[derive(Component)]
 struct Bullet;
@@ -63,6 +69,21 @@ fn setup(
             ..default()
         },
         Player,
+    ));
+
+    // Enemy
+    let enemy_y = WINDOW_HALF_SIZE.y - GAP_BETWEEN_PLAYER_AND_FLOOR;
+
+    commands.spawn((
+        MaterialMesh2dBundle {
+            mesh: meshes
+                .add(shape::RegularPolygon::new(ENEMY_SIZE, 4).into())
+                .into(),
+            material: materials.add(ColorMaterial::from(ENEMY_COLOR)),
+            transform: Transform::from_translation(Vec3::new(0., enemy_y, 0.)),
+            ..default()
+        },
+        Enemy,
     ));
 }
 
