@@ -1,4 +1,7 @@
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
+use bevy::{
+    prelude::*,
+    sprite::{collide_aabb::collide, MaterialMesh2dBundle},
+};
 
 const WINDOW_SIZE: Vec2 = Vec2::new(700.0, 700.0);
 const WINDOW_HALF_SIZE: Vec2 = Vec2::new(WINDOW_SIZE.x / 2.0, WINDOW_SIZE.y / 2.0);
@@ -14,6 +17,7 @@ const GAP_BETWEEN_ENEMY_AND_TOP: f32 = 40.0;
 const INITIAL_ENEMY_DIRECTION: Vec2 = Vec2::new(-0.5, 0.0);
 
 const BULLET_SPEED: f32 = 800.0;
+const BULLET_SIZE: f32 = 5.0;
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
 const PLAYER_COLOR: Color = Color::rgb(0.3, 0.9, 0.3);
@@ -35,6 +39,7 @@ fn main() {
         .add_system(move_player)
         .add_system(shot_player)
         .add_system(move_enemy)
+        .add_system(hit_bullet)
         .add_system(remove_bullet)
         .add_system(bevy::window::close_on_esc)
         .run();
@@ -48,6 +53,9 @@ struct Enemy;
 
 #[derive(Component)]
 struct Bullet;
+
+#[derive(Component)]
+struct Collider;
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
@@ -73,6 +81,7 @@ fn setup(
             ..default()
         },
         Player,
+        Collider,
     ));
 
     // Enemy
@@ -89,6 +98,7 @@ fn setup(
         },
         Enemy,
         Velocity(INITIAL_ENEMY_DIRECTION.normalize() * ENEMY_SPEED),
+        Collider,
     ));
 }
 
@@ -104,6 +114,10 @@ fn move_player(
     mut player_query: Query<&mut Transform, With<Player>>,
     time_step: Res<FixedTime>,
 ) {
+    if player_query.is_empty() {
+        return;
+    }
+
     let mut player_transform = player_query.single_mut();
     let mut direction = Vec2::ZERO;
 
@@ -146,15 +160,23 @@ fn shot_player(
     mut materials: ResMut<Assets<ColorMaterial>>,
     player_query: Query<&Transform, With<Player>>,
 ) {
+    if player_query.is_empty() {
+        return;
+    }
+
     let player_transform = player_query.single();
 
     if keyboard_input.just_pressed(KeyCode::Space) {
-        // Spawn a bullet
+        // Bullet
+        let bullet_y = player_transform.translation.y + PLAYER_SIZE / 2.0 + BULLET_SIZE / 2.0;
+
         commands.spawn((
             MaterialMesh2dBundle {
-                mesh: meshes.add(shape::Circle::new(5.).into()).into(),
+                mesh: meshes.add(shape::Circle::new(BULLET_SIZE).into()).into(),
                 material: materials.add(ColorMaterial::from(PLAYER_COLOR)),
-                transform: Transform::from_translation(player_transform.translation),
+                transform: Transform::from_translation(
+                    Vec2::new(player_transform.translation.x, bullet_y).extend(0.),
+                ),
                 ..default()
             },
             Bullet,
@@ -164,6 +186,10 @@ fn shot_player(
 }
 
 fn move_enemy(mut enemy_query: Query<(&Transform, &mut Velocity), With<Enemy>>) {
+    if enemy_query.is_empty() {
+        return;
+    }
+
     let (enemy_transform, mut enemy_velocity) = enemy_query.single_mut();
     let left_wall_collision =
         WINDOW_HALF_SIZE.x < enemy_transform.translation.x + ENEMY_SIZE / 2.0 + 10.0;
@@ -172,6 +198,27 @@ fn move_enemy(mut enemy_query: Query<(&Transform, &mut Velocity), With<Enemy>>) 
 
     if left_wall_collision || right_wall_collision {
         enemy_velocity.x = -enemy_velocity.x;
+    }
+}
+
+fn hit_bullet(
+    mut commands: Commands,
+    bullet_query: Query<(Entity, &Transform), With<Bullet>>,
+    collider_query: Query<(Entity, &Transform), With<Collider>>,
+) {
+    for (bullet_entity, bullet_transform) in &bullet_query {
+        for (collider_entity, collider_transform) in collider_query.iter() {
+            let collision = collide(
+                bullet_transform.translation,
+                Vec2::new(BULLET_SIZE, BULLET_SIZE),
+                collider_transform.translation,
+                Vec2::new(15., 15.),
+            );
+            if let Some(_collision) = collision {
+                commands.entity(collider_entity).despawn();
+                commands.entity(bullet_entity).despawn();
+            }
+        }
     }
 }
 
@@ -184,7 +231,6 @@ fn remove_bullet(mut commands: Commands, bullet_query: Query<(Entity, &Transform
             || bullet_pos.y < -WINDOW_HALF_SIZE.y
             || bullet_pos.y > WINDOW_HALF_SIZE.y
         {
-            println!("Bullet out of bounds");
             commands.entity(bullet_entity).despawn();
         }
     }
