@@ -8,11 +8,13 @@ const WINDOW_HALF_SIZE: Vec2 = Vec2::new(WINDOW_SIZE.x / 2.0, WINDOW_SIZE.y / 2.
 
 const PLAYER_SPEED: f32 = 200.0;
 const PLAYER_SIZE: f32 = 15.0;
+const PLAYER_HP: f32 = 3.0;
 const GAP_BETWEEN_PLAYER_AND_FLOOR: f32 = 40.0;
 const PLAYER_PADDING: f32 = 20.0;
 
 const ENEMY_SPEED: f32 = 100.0;
 const ENEMY_SIZE: f32 = 15.0;
+const ENEMY_HP: f32 = 3.0;
 const GAP_BETWEEN_ENEMY_AND_TOP: f32 = 40.0;
 const INITIAL_ENEMY_DIRECTION: Vec2 = Vec2::new(-0.5, 0.0);
 
@@ -55,7 +57,9 @@ struct Enemy;
 struct Bullet;
 
 #[derive(Component)]
-struct Collider;
+struct Collider {
+    pub hp: f32,
+}
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
@@ -81,7 +85,7 @@ fn setup(
             ..default()
         },
         Player,
-        Collider,
+        Collider { hp: PLAYER_HP },
     ));
 
     // Enemy
@@ -98,7 +102,7 @@ fn setup(
         },
         Enemy,
         Velocity(INITIAL_ENEMY_DIRECTION.normalize() * ENEMY_SPEED),
-        Collider,
+        Collider { hp: ENEMY_HP },
     ));
 }
 
@@ -204,10 +208,10 @@ fn move_enemy(mut enemy_query: Query<(&Transform, &mut Velocity), With<Enemy>>) 
 fn hit_bullet(
     mut commands: Commands,
     bullet_query: Query<(Entity, &Transform), With<Bullet>>,
-    collider_query: Query<(Entity, &Transform), With<Collider>>,
+    mut collider_query: Query<(&mut Collider, Entity, &Transform), With<Collider>>,
 ) {
     for (bullet_entity, bullet_transform) in &bullet_query {
-        for (collider_entity, collider_transform) in collider_query.iter() {
+        for (mut collider, collider_entity, collider_transform) in collider_query.iter_mut() {
             let collision = collide(
                 bullet_transform.translation,
                 Vec2::new(BULLET_SIZE, BULLET_SIZE),
@@ -215,8 +219,12 @@ fn hit_bullet(
                 Vec2::new(15., 15.),
             );
             if let Some(_collision) = collision {
-                commands.entity(collider_entity).despawn();
                 commands.entity(bullet_entity).despawn();
+                collider.hp -= 1.0;
+
+                if collider.hp <= 0.0 {
+                    commands.entity(collider_entity).despawn();
+                }
             }
         }
     }
