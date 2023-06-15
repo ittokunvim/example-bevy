@@ -18,12 +18,21 @@ const ENEMY_HP: f32 = 3.0;
 const GAP_BETWEEN_ENEMY_AND_TOP: f32 = 40.0;
 const INITIAL_ENEMY_DIRECTION: Vec2 = Vec2::new(-0.5, 0.0);
 
+const SCOREBOARD_FONT_SIZE: f32 = 20.0;
+const SCOREBOARD_TEXT_PADDING: f32 = 5.0;
+const SCOREBOARD_SIZE: Vec2 = Vec2::new(
+    WINDOW_SIZE.x,
+    SCOREBOARD_FONT_SIZE + SCOREBOARD_TEXT_PADDING,
+);
+
 const BULLET_SPEED: f32 = 800.0;
 const BULLET_SIZE: f32 = 5.0;
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
 const PLAYER_COLOR: Color = Color::rgb(0.3, 0.9, 0.3);
 const ENEMY_COLOR: Color = Color::rgb(0.9, 0.3, 0.3);
+const TEXT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
+const SCOREBOARD_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 
 fn main() {
     App::new()
@@ -36,6 +45,10 @@ fn main() {
         }))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(Scoreboard {
+            player_hp: PLAYER_HP,
+            enemy_hp: ENEMY_HP,
+        })
         .add_startup_system(setup)
         .add_system(apply_velocity)
         .add_system(move_player)
@@ -64,10 +77,17 @@ struct Collider {
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
 
+#[derive(Resource)]
+struct Scoreboard {
+    player_hp: f32,
+    enemy_hp: f32,
+}
+
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     // Camera
     commands.spawn(Camera2dBundle::default());
@@ -89,7 +109,7 @@ fn setup(
     ));
 
     // Enemy
-    let enemy_y = WINDOW_HALF_SIZE.y - GAP_BETWEEN_ENEMY_AND_TOP;
+    let enemy_y = WINDOW_HALF_SIZE.y - SCOREBOARD_SIZE.y - GAP_BETWEEN_ENEMY_AND_TOP;
 
     commands.spawn((
         MaterialMesh2dBundle {
@@ -104,6 +124,47 @@ fn setup(
         Velocity(INITIAL_ENEMY_DIRECTION.normalize() * ENEMY_SPEED),
         Collider { hp: ENEMY_HP },
     ));
+    // Scoreboard
+    let font_bold: Handle<Font> = asset_server.load("fonts/FiraSans-Bold.ttf");
+    let font_medium: Handle<Font> = asset_server.load("fonts/FiraMono-Medium.ttf");
+    let text_closure = |font: Handle<Font>, text: String| -> TextSection {
+        let style = TextStyle {
+            font,
+            font_size: SCOREBOARD_FONT_SIZE,
+            color: TEXT_COLOR,
+        };
+        TextSection::new(text, style)
+    };
+
+    commands.spawn(
+        TextBundle::from_sections([
+            text_closure(font_bold.clone(), "Player: ".to_string()),
+            text_closure(font_medium.clone(), PLAYER_HP.to_string()),
+            text_closure(font_bold.clone(), ", Enemy: ".to_string()),
+            text_closure(font_medium.clone(), ENEMY_HP.to_string()),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                top: Val::Px(SCOREBOARD_TEXT_PADDING),
+                left: Val::Px(SCOREBOARD_TEXT_PADDING),
+                ..default()
+            },
+            ..default()
+        }),
+    );
+    // Scoreboard background
+    commands.spawn(SpriteBundle {
+        sprite: Sprite {
+            color: SCOREBOARD_COLOR,
+            custom_size: Some(SCOREBOARD_SIZE),
+            ..default()
+        },
+        transform: Transform::from_translation(
+            Vec2::new(0.0, WINDOW_HALF_SIZE.y - SCOREBOARD_SIZE.y / 2.).extend(0.0),
+        ),
+        ..default()
+    });
 }
 
 fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
