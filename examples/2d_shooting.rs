@@ -17,6 +17,7 @@ const ENEMY_SIZE: f32 = 15.0;
 const ENEMY_HP: f32 = 3.0;
 const GAP_BETWEEN_ENEMY_AND_TOP: f32 = 40.0;
 const INITIAL_ENEMY_DIRECTION: Vec2 = Vec2::new(-0.5, 0.0);
+const ENEMY_ATTACK_INTERVAL: f32 = 0.2;
 
 const SCOREBOARD_FONT_SIZE: f32 = 20.0;
 const SCOREBOARD_TEXT_PADDING: f32 = 5.0;
@@ -49,17 +50,18 @@ fn main() {
             player_hp: PLAYER_HP,
             enemy_hp: ENEMY_HP,
         })
-        .insert_resource(GameTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
+        .insert_resource(EnemyAttackTimer(Timer::from_seconds(
+            ENEMY_ATTACK_INTERVAL,
+            TimerMode::Repeating,
+        )))
         .add_startup_system(setup)
         .add_system(apply_velocity)
         .add_system(move_player)
-        .add_system(shot_player)
+        .add_system(player_shoot)
         .add_system(move_enemy)
-        .add_system(shot_enemy)
-        .add_system(hit_bullet)
-        .add_system(remove_bullet)
-        .add_system(update_scoreboard)
-        .add_system(bevy::window::close_on_esc)
+        .add_system(enemy_shoot)
+        .add_system(bullet_collision)
+        .add_systems((remove_bullet, update_scoreboard, bevy::window::close_on_esc))
         .run();
 }
 
@@ -88,7 +90,7 @@ struct Scoreboard {
 }
 
 #[derive(Resource)]
-struct GameTimer(Timer);
+struct EnemyAttackTimer(Timer);
 
 fn setup(
     mut commands: Commands,
@@ -100,7 +102,7 @@ fn setup(
     commands.spawn(Camera2dBundle::default());
 
     // Player
-    let player_y = -WINDOW_SIZE.y / 2. + GAP_BETWEEN_PLAYER_AND_FLOOR;
+    let player_y = -WINDOW_HALF_SIZE.y + GAP_BETWEEN_PLAYER_AND_FLOOR;
 
     commands.spawn((
         MaterialMesh2dBundle {
@@ -206,19 +208,14 @@ fn move_player(
     let mut player_transform = player_query.single_mut();
     let mut direction = Vec2::ZERO;
 
+    // Keyboard input
     if keyboard_input.any_pressed([KeyCode::Left, KeyCode::A]) {
         direction.x -= 1.0;
-    }
-
-    if keyboard_input.any_pressed([KeyCode::Right, KeyCode::D]) {
+    } else if keyboard_input.any_pressed([KeyCode::Right, KeyCode::D]) {
         direction.x += 1.0;
-    }
-
-    if keyboard_input.any_pressed([KeyCode::Up, KeyCode::W]) {
+    } else if keyboard_input.any_pressed([KeyCode::Up, KeyCode::W]) {
         direction.y += 1.0;
-    }
-
-    if keyboard_input.any_pressed([KeyCode::Down, KeyCode::S]) {
+    } else if keyboard_input.any_pressed([KeyCode::Down, KeyCode::S]) {
         direction.y -= 1.0;
     }
 
@@ -238,7 +235,7 @@ fn move_player(
     player_transform.translation.y = new_player_position_y.clamp(up_bound, down_bound);
 }
 
-fn shot_player(
+fn player_shoot(
     keyboard_input: Res<Input<KeyCode>>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -276,23 +273,23 @@ fn move_enemy(mut enemy_query: Query<(&Transform, &mut Velocity), With<Enemy>>) 
     }
 
     let (enemy_transform, mut enemy_velocity) = enemy_query.single_mut();
-    let left_wall_collision =
+    let left_window_collision =
         WINDOW_HALF_SIZE.x < enemy_transform.translation.x + ENEMY_SIZE / 2.0 + 10.0;
-    let right_wall_collision =
+    let right_window_collision =
         -WINDOW_HALF_SIZE.x > enemy_transform.translation.x - ENEMY_SIZE / 2.0 - 10.0;
 
-    if left_wall_collision || right_wall_collision {
+    if left_window_collision || right_window_collision {
         enemy_velocity.x = -enemy_velocity.x;
     }
 }
 
-fn shot_enemy(
+fn enemy_shoot(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     enemy_query: Query<&Transform, With<Enemy>>,
     time: Res<Time>,
-    mut timer: ResMut<GameTimer>,
+    mut timer: ResMut<EnemyAttackTimer>,
 ) {
     if enemy_query.is_empty() {
         return;
@@ -319,7 +316,7 @@ fn shot_enemy(
     }
 }
 
-fn hit_bullet(
+fn bullet_collision(
     mut commands: Commands,
     bullet_query: Query<(Entity, &Transform), With<Bullet>>,
     mut collider_query: Query<(&mut Collider, Entity, &Transform), With<Collider>>,
@@ -327,13 +324,23 @@ fn hit_bullet(
 ) {
     for (bullet_entity, bullet_transform) in &bullet_query {
         for (mut collider, collider_entity, collider_transform) in collider_query.iter_mut() {
+            let bullet_size = Vec2::new(BULLET_SIZE, BULLET_SIZE);
+            let mut collider_size = Vec2::ZERO;
+
+            if collider.name == "player".to_string() {
+                collider_size = Vec2::new(PLAYER_SIZE, PLAYER_SIZE);
+            } else if collider.name == "enemy".to_string() {
+                collider_size = Vec2::new(ENEMY_SIZE, ENEMY_SIZE);
+            }
+
             let collision = collide(
                 bullet_transform.translation,
-                Vec2::new(BULLET_SIZE, BULLET_SIZE),
+                bullet_size,
                 collider_transform.translation,
-                Vec2::new(15., 15.),
+                collider_size,
             );
-            if let Some(_collision) = collision {
+
+            if let Some(..) = collision {
                 commands.entity(bullet_entity).despawn();
                 collider.hp -= 1.0;
 
