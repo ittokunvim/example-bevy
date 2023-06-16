@@ -56,6 +56,7 @@ fn main() {
         .add_system(move_enemy)
         .add_system(hit_bullet)
         .add_system(remove_bullet)
+        .add_system(update_scoreboard)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -71,6 +72,7 @@ struct Bullet;
 
 #[derive(Component)]
 struct Collider {
+    pub name: String,
     pub hp: f32,
 }
 
@@ -105,7 +107,10 @@ fn setup(
             ..default()
         },
         Player,
-        Collider { hp: PLAYER_HP },
+        Collider {
+            name: "player".to_string(),
+            hp: PLAYER_HP,
+        },
     ));
 
     // Enemy
@@ -122,8 +127,12 @@ fn setup(
         },
         Enemy,
         Velocity(INITIAL_ENEMY_DIRECTION.normalize() * ENEMY_SPEED),
-        Collider { hp: ENEMY_HP },
+        Collider {
+            name: "enemy".to_string(),
+            hp: ENEMY_HP,
+        },
     ));
+
     // Scoreboard
     let font_bold: Handle<Font> = asset_server.load("fonts/FiraSans-Bold.ttf");
     let font_medium: Handle<Font> = asset_server.load("fonts/FiraMono-Medium.ttf");
@@ -174,6 +183,12 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<
     }
 }
 
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
+    let mut text = query.single_mut();
+    text.sections[1].value = scoreboard.player_hp.to_string();
+    text.sections[3].value = scoreboard.enemy_hp.to_string();
+}
+
 fn move_player(
     keyboard_input: Res<Input<KeyCode>>,
     mut player_query: Query<&mut Transform, With<Player>>,
@@ -212,7 +227,7 @@ fn move_player(
     let new_player_position_y = player_transform.translation.y
         + direction.y * PLAYER_SPEED * time_step.period.as_secs_f32();
     let up_bound = -WINDOW_HALF_SIZE.y + PLAYER_SIZE / 2.0 + PLAYER_PADDING;
-    let down_bound = WINDOW_HALF_SIZE.y - PLAYER_SIZE / 2.0 - PLAYER_PADDING;
+    let down_bound = WINDOW_HALF_SIZE.y - PLAYER_SIZE / 2.0 - PLAYER_PADDING - SCOREBOARD_SIZE.y;
 
     player_transform.translation.x = new_player_position_x.clamp(left_bound, right_bound);
     player_transform.translation.y = new_player_position_y.clamp(up_bound, down_bound);
@@ -270,6 +285,7 @@ fn hit_bullet(
     mut commands: Commands,
     bullet_query: Query<(Entity, &Transform), With<Bullet>>,
     mut collider_query: Query<(&mut Collider, Entity, &Transform), With<Collider>>,
+    mut scoreboard: ResMut<Scoreboard>,
 ) {
     for (bullet_entity, bullet_transform) in &bullet_query {
         for (mut collider, collider_entity, collider_transform) in collider_query.iter_mut() {
@@ -282,6 +298,12 @@ fn hit_bullet(
             if let Some(_collision) = collision {
                 commands.entity(bullet_entity).despawn();
                 collider.hp -= 1.0;
+
+                if collider.name == "player".to_string() {
+                    scoreboard.player_hp -= 1.0;
+                } else if collider.name == "enemy".to_string() {
+                    scoreboard.enemy_hp -= 1.0;
+                }
 
                 if collider.hp <= 0.0 {
                     commands.entity(collider_entity).despawn();
