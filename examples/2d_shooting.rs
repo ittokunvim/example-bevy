@@ -49,11 +49,13 @@ fn main() {
             player_hp: PLAYER_HP,
             enemy_hp: ENEMY_HP,
         })
+        .insert_resource(GameTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
         .add_startup_system(setup)
         .add_system(apply_velocity)
         .add_system(move_player)
         .add_system(shot_player)
         .add_system(move_enemy)
+        .add_system(shot_enemy)
         .add_system(hit_bullet)
         .add_system(remove_bullet)
         .add_system(update_scoreboard)
@@ -84,6 +86,9 @@ struct Scoreboard {
     player_hp: f32,
     enemy_hp: f32,
 }
+
+#[derive(Resource)]
+struct GameTimer(Timer);
 
 fn setup(
     mut commands: Commands,
@@ -278,6 +283,39 @@ fn move_enemy(mut enemy_query: Query<(&Transform, &mut Velocity), With<Enemy>>) 
 
     if left_wall_collision || right_wall_collision {
         enemy_velocity.x = -enemy_velocity.x;
+    }
+}
+
+fn shot_enemy(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    enemy_query: Query<&Transform, With<Enemy>>,
+    time: Res<Time>,
+    mut timer: ResMut<GameTimer>,
+) {
+    if enemy_query.is_empty() {
+        return;
+    }
+
+    let enemy_transform = enemy_query.single();
+
+    // Bullet
+    let bullet_y = enemy_transform.translation.y - ENEMY_SIZE / 2.0 - BULLET_SIZE / 2.0;
+
+    if timer.0.tick(time.delta()).just_finished() {
+        commands.spawn((
+            MaterialMesh2dBundle {
+                mesh: meshes.add(shape::Circle::new(BULLET_SIZE).into()).into(),
+                material: materials.add(ColorMaterial::from(ENEMY_COLOR)),
+                transform: Transform::from_translation(
+                    Vec2::new(enemy_transform.translation.x, bullet_y).extend(0.),
+                ),
+                ..default()
+            },
+            Bullet,
+            Velocity(Vec2::new(0., -0.5) * BULLET_SPEED),
+        ));
     }
 }
 
