@@ -1,16 +1,13 @@
-use bevy::{
-    prelude::*,
-    sprite::collide_aabb::{collide, Collision},
-    sprite::MaterialMesh2dBundle,
-    window::PrimaryWindow,
-};
+use bevy::{prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow};
 use rand::distributions::{Distribution, Uniform};
+
+const WINDOW_WIDTH: f32 = 1080.0;
+const WINDOW_HEIGHT: f32 = 720.0;
 
 const BALL_COUNT: usize = 30;
 const BALL_SIZE: Vec3 = Vec3::new(50.0, 50.0, 0.0);
 const BALL_SPEED: f32 = 400.0;
 
-const WALL_THICKNESS: f32 = 10.0;
 const LEFT_WALL: f32 = -450.0;
 const RIGHT_WALL: f32 = 450.0;
 const BOTTOM_WALL: f32 = -300.0;
@@ -21,13 +18,18 @@ const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const BALL_COLOR: Color = Color::rgb(0.9, 0.3, 0.3);
-const WALL_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
 const TEXT_COLOR: Color = Color::rgb(0.5, 0.5, 1.0);
 const SCORE_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                resolution: (WINDOW_WIDTH, WINDOW_HEIGHT).into(),
+                ..default()
+            }),
+            ..default()
+        }))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .insert_resource(Scoreboard {
@@ -46,67 +48,6 @@ struct Ball;
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
 
-#[derive(Component)]
-struct Collider;
-
-#[derive(Bundle)]
-struct WallBundle {
-    sprite_bundle: SpriteBundle,
-    collider: Collider,
-}
-
-enum WallLocation {
-    Left,
-    Right,
-    Bottom,
-    Top,
-}
-
-impl WallLocation {
-    fn position(&self) -> Vec2 {
-        match self {
-            WallLocation::Left => Vec2::new(LEFT_WALL, 0.),
-            WallLocation::Right => Vec2::new(RIGHT_WALL, 0.),
-            WallLocation::Bottom => Vec2::new(0., BOTTOM_WALL),
-            WallLocation::Top => Vec2::new(0., TOP_WALL),
-        }
-    }
-
-    fn size(&self) -> Vec2 {
-        let area_height = TOP_WALL - BOTTOM_WALL;
-        let area_width = RIGHT_WALL - LEFT_WALL;
-
-        match self {
-            WallLocation::Left | WallLocation::Right => {
-                Vec2::new(WALL_THICKNESS, area_height + WALL_THICKNESS)
-            }
-            WallLocation::Bottom | WallLocation::Top => {
-                Vec2::new(area_width + WALL_THICKNESS, WALL_THICKNESS)
-            }
-        }
-    }
-}
-
-impl WallBundle {
-    fn new(location: WallLocation) -> WallBundle {
-        WallBundle {
-            sprite_bundle: SpriteBundle {
-                sprite: Sprite {
-                    color: WALL_COLOR,
-                    ..default()
-                },
-                transform: Transform {
-                    translation: location.position().extend(0.0),
-                    scale: location.size().extend(0.0),
-                    ..default()
-                },
-                ..default()
-            },
-            collider: Collider,
-        }
-    }
-}
-
 #[derive(Resource)]
 struct Scoreboard {
     ball_count: usize,
@@ -120,12 +61,6 @@ fn setup(
 ) {
     // Camera
     commands.spawn(Camera2dBundle::default());
-
-    // Walls
-    commands.spawn(WallBundle::new(WallLocation::Left));
-    commands.spawn(WallBundle::new(WallLocation::Right));
-    commands.spawn(WallBundle::new(WallLocation::Bottom));
-    commands.spawn(WallBundle::new(WallLocation::Top));
 
     let mut rng = rand::thread_rng();
     let die_width = Uniform::from(LEFT_WALL + BALL_SIZE.x..RIGHT_WALL - BALL_SIZE.x);
@@ -192,40 +127,25 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<
     }
 }
 
-fn check_for_collisions(
-    mut balls_query: Query<(&mut Velocity, &Transform), With<Ball>>,
-    collider_query: Query<&Transform, With<Collider>>,
-) {
+fn check_for_collisions(mut balls_query: Query<(&mut Velocity, &Transform), With<Ball>>) {
     for (mut ball_velocity, ball_transform) in balls_query.iter_mut() {
         let ball_size = ball_transform.scale.truncate();
 
-        for transform in &collider_query {
-            let collision = collide(
-                ball_transform.translation,
-                ball_size,
-                transform.translation,
-                transform.scale.truncate(),
-            );
-            if let Some(collision) = collision {
-                let mut reflect_x = false;
-                let mut reflect_y = false;
+        let left_window_collision =
+            WINDOW_WIDTH / 2.0 < ball_transform.translation.x + ball_size.x / 2.0;
+        let right_window_collision =
+            -WINDOW_WIDTH / 2.0 > ball_transform.translation.x - ball_size.x / 2.0;
+        let top_window_collision =
+            WINDOW_HEIGHT / 2.0 < ball_transform.translation.y + ball_size.y / 2.0;
+        let bottom_window_collision =
+            -WINDOW_HEIGHT / 2.0 > ball_transform.translation.y - ball_size.y / 2.0;
 
-                match collision {
-                    Collision::Left => reflect_x = ball_velocity.x > 0.0,
-                    Collision::Right => reflect_x = ball_velocity.x < 0.0,
-                    Collision::Top => reflect_y = ball_velocity.y < 0.0,
-                    Collision::Bottom => reflect_y = ball_velocity.y > 0.0,
-                    Collision::Inside => { /* do nothing */ }
-                }
+        if left_window_collision || right_window_collision {
+            ball_velocity.x = -ball_velocity.x;
+        }
 
-                if reflect_x {
-                    ball_velocity.x = -ball_velocity.x;
-                }
-
-                if reflect_y {
-                    ball_velocity.y = -ball_velocity.y;
-                }
-            }
+        if top_window_collision || bottom_window_collision {
+            ball_velocity.y = -ball_velocity.y;
         }
     }
 }
