@@ -155,7 +155,7 @@ fn setup(
     commands.spawn(
         TextBundle::from_sections([
             TextSection::new(
-                "Score: ",
+                "Ball Count: ",
                 TextStyle {
                     font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                     font_size: SCOREBOARD_FONT_SIZE,
