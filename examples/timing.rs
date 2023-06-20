@@ -127,7 +127,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         },
         transform: Transform {
-            translation: Vec3::new(-slider_pos_x / 2.0, 0.0, 0.0),
+            translation: Vec3::new(slider_pos_x / 2.0, 0.0, 0.0),
             ..default()
         },
         ..default()
@@ -192,7 +192,7 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<
 
 fn check_for_collisions(
     mut cue_query: Query<(&mut Velocity, &Transform), With<Cue>>,
-    collider_query: Query<&Transform, (With<Collider>, Without<Cue>)>,
+    collider_query: Query<&Transform, With<Collider>>,
 ) {
     let (mut cue_velocity, cue_transform) = cue_query.single_mut();
 
