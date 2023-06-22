@@ -15,8 +15,16 @@ fn main() {
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
+        .add_system(move_player)
         .add_system(bevy::window::close_on_esc)
         .run();
+}
+
+#[derive(Component)]
+struct Player {
+    i: usize,
+    j: usize,
+    move_cooldown: Timer,
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -59,13 +67,68 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Player
     let player_asset = asset_server.load("models/Frogger/gekota.glb#Scene0");
 
-    commands.spawn(SceneBundle {
-        transform: Transform {
-            translation: PLAYER_INITIAL_POSITION,
-            rotation: Quat::from_rotation_y(-PI / 2.),
+    commands.spawn((
+        SceneBundle {
+            transform: Transform {
+                translation: PLAYER_INITIAL_POSITION,
+                rotation: Quat::from_rotation_y(PI / 2.0),
+                ..default()
+            },
+            scene: player_asset,
             ..default()
         },
-        scene: player_asset,
-        ..default()
-    });
+        Player {
+            i: PLAYER_INITIAL_POSITION.x as usize,
+            j: PLAYER_INITIAL_POSITION.z as usize,
+            move_cooldown: Timer::from_seconds(0.3, TimerMode::Once),
+        },
+    ));
+}
+
+fn move_player(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
+    time: Res<Time>,
+) {
+    let (mut player, mut player_transform) = player_query.single_mut();
+
+    if player.move_cooldown.tick(time.delta()).finished() {
+        let mut moved = false;
+        let mut rotation = 0.0;
+
+        if keyboard_input.any_pressed([KeyCode::W, KeyCode::Up]) {
+            if player.i < BOARD_SIZE_I - 1 {
+                player.i += 1;
+            }
+            rotation = PI / 2.0;
+            moved = true;
+        }
+        if keyboard_input.any_pressed([KeyCode::S, KeyCode::Down]) {
+            if player.i > 0 {
+                player.i -= 1;
+            }
+            rotation = -PI / 2.0;
+            moved = true;
+        }
+        if keyboard_input.any_pressed([KeyCode::D, KeyCode::Right]) {
+            if player.j < BOARD_SIZE_J - 1 {
+                player.j += 1;
+            }
+            rotation = 0.0;
+            moved = true;
+        }
+        if keyboard_input.any_pressed([KeyCode::A, KeyCode::Left]) {
+            if player.j > 0 {
+                player.j -= 1;
+            }
+            rotation = PI;
+            moved = true;
+        }
+
+        if moved {
+            player.move_cooldown.reset();
+            player_transform.translation = Vec3::new(player.i as f32, 0.0, player.j as f32);
+            player_transform.rotation = Quat::from_rotation_y(rotation);
+        }
+    }
 }
