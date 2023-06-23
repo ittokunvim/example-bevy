@@ -5,6 +5,9 @@ use bevy::prelude::*;
 const BOARD_SIZE_I: usize = 14;
 const BOARD_SIZE_J: usize = 21;
 
+const CAMERA_SPEED: f32 = 2.0;
+const CAMERA_DISTANCE: Vec3 = Vec3::new(-2.8, 3.0, 3.5);
+
 const PLAYER_INITIAL_POSITION: Vec3 = Vec3::new(0.0, 0.0, BOARD_SIZE_J as f32 / 2.0 - 0.5);
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
@@ -16,8 +19,14 @@ fn main() {
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
         .add_system(move_player)
+        .add_system(focus_camera)
         .add_system(bevy::window::close_on_esc)
         .run();
+}
+
+#[derive(Component)]
+struct Camera {
+    looking_at: Vec3,
 }
 
 #[derive(Component)]
@@ -29,15 +38,16 @@ struct Player {
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(
-            PLAYER_INITIAL_POSITION.x - 2.8,
-            PLAYER_INITIAL_POSITION.y + 3.0,
-            PLAYER_INITIAL_POSITION.z + 3.5,
-        )
-        .looking_at(Vec3::from(PLAYER_INITIAL_POSITION), Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_translation(PLAYER_INITIAL_POSITION + CAMERA_DISTANCE)
+                .looking_at(Vec3::from(PLAYER_INITIAL_POSITION), Vec3::Y),
+            ..default()
+        },
+        Camera {
+            looking_at: Vec3::from(PLAYER_INITIAL_POSITION),
+        },
+    ));
 
     // Light
     commands.spawn(PointLightBundle {
@@ -131,4 +141,30 @@ fn move_player(
             player_transform.rotation = Quat::from_rotation_y(rotation);
         }
     }
+}
+
+fn focus_camera(
+    time: Res<Time>,
+    mut camera_query: Query<(&mut Camera, &mut Transform), (With<Camera3d>, Without<Player>)>,
+    player_query: Query<&Transform, With<Player>>,
+) {
+    let (mut camera, mut camera_transform) = camera_query.single_mut();
+    let player_transform = player_query.single();
+    let motion_time = CAMERA_SPEED * time.delta_seconds();
+
+    // move camera position
+    let mut camera_motion =
+        player_transform.translation + CAMERA_DISTANCE - camera_transform.translation;
+    if camera_motion.length() > 0.2 {
+        camera_motion *= motion_time;
+        camera_transform.translation += camera_motion;
+    }
+
+    // move camera looking position
+    let mut camera_motion = player_transform.translation - camera.looking_at;
+    if camera_motion.length() > 0.2 {
+        camera_motion *= motion_time;
+        camera.looking_at += camera_motion;
+    }
+    *camera_transform = camera_transform.looking_at(camera.looking_at, Vec3::Y);
 }
