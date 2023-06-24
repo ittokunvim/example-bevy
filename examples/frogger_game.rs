@@ -2,8 +2,8 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
-const BOARD_SIZE_I: usize = 14;
-const BOARD_SIZE_J: usize = 21;
+const BOARD_SIZE_I: usize = 21;
+const BOARD_SIZE_J: usize = 14;
 
 const CAMERA_SPEED: f32 = 2.0;
 const CAMERA_DISTANCE: Vec3 = Vec3::new(-2.8, 3.0, 3.5);
@@ -20,6 +20,7 @@ fn main() {
         .add_startup_system(setup)
         .add_system(move_player)
         .add_system(focus_camera)
+        .add_system(goal_player)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -167,4 +168,14 @@ fn focus_camera(
         camera.looking_at += camera_motion;
     }
     *camera_transform = camera_transform.looking_at(camera.looking_at, Vec3::Y);
+}
+
+fn goal_player(mut player_query: Query<(&mut Player, &mut Transform), With<Player>>) {
+    let (mut player, mut player_transform) = player_query.single_mut();
+
+    if player.i >= BOARD_SIZE_I - 1 {
+        player.i = PLAYER_INITIAL_POSITION.x as usize;
+        player.j = PLAYER_INITIAL_POSITION.z as usize;
+        player_transform.translation = PLAYER_INITIAL_POSITION;
+    }
 }
