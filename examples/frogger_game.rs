@@ -1,9 +1,10 @@
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
+use rand::Rng;
 
-const BOARD_SIZE_I: usize = 21;
-const BOARD_SIZE_J: usize = 14;
+const BOARD_SIZE_I: usize = 12;
+const BOARD_SIZE_J: usize = 8;
 
 const CAMERA_SPEED: f32 = 2.0;
 const CAMERA_DISTANCE: Vec3 = Vec3::new(-2.8, 3.0, 3.5);
@@ -37,7 +38,15 @@ struct Player {
     move_cooldown: Timer,
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+#[derive(Component)]
+struct Obstacle;
+
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     // Camera
     commands.spawn((
         Camera3dBundle {
@@ -94,6 +103,24 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             move_cooldown: Timer::from_seconds(0.3, TimerMode::Once),
         },
     ));
+
+    // Obstacles
+    for i in 1..BOARD_SIZE_I - 1 {
+        if i % 2 == 0 {
+            continue;
+        }
+
+        let transform_z = rand::thread_rng().gen_range(0..BOARD_SIZE_J) as f32;
+        commands.spawn((
+            PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+                material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+                transform: Transform::from_xyz(i as f32, 0.5, transform_z),
+                ..default()
+            },
+            Obstacle,
+        ));
+    }
 }
 
 fn move_player(
