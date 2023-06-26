@@ -22,6 +22,7 @@ fn main() {
         .add_system(move_player)
         .add_system(focus_camera)
         .add_system(goal_player)
+        .add_system(check_for_collision)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -33,13 +34,16 @@ struct Camera {
 
 #[derive(Component)]
 struct Player {
-    i: usize,
-    j: usize,
+    i: f32,
+    j: f32,
     move_cooldown: Timer,
 }
 
 #[derive(Component)]
-struct Obstacle;
+struct Obstacle {
+    i: f32,
+    j: f32,
+}
 
 fn setup(
     mut commands: Commands,
@@ -98,8 +102,8 @@ fn setup(
             ..default()
         },
         Player {
-            i: PLAYER_INITIAL_POSITION.x as usize,
-            j: PLAYER_INITIAL_POSITION.z as usize,
+            i: PLAYER_INITIAL_POSITION.x,
+            j: PLAYER_INITIAL_POSITION.z,
             move_cooldown: Timer::from_seconds(0.3, TimerMode::Once),
         },
     ));
@@ -118,8 +122,29 @@ fn setup(
                 transform: Transform::from_xyz(i as f32, 0.5, transform_z),
                 ..default()
             },
-            Obstacle,
+            Obstacle {
+                i: i as f32,
+                j: transform_z,
+            },
         ));
+    }
+}
+
+fn check_for_collision(
+    mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
+    obstacle_query: Query<&Obstacle, With<Obstacle>>,
+) {
+    let (mut player, mut player_transform) = player_query.single_mut();
+    let player_j = (player.j as f32 - 0.5, player.j as f32 + 0.5);
+
+    for obstacle in &obstacle_query {
+        let obstacle_j = (obstacle.j as f32 - 0.5, obstacle.j as f32 + 0.5);
+
+        if player_j.0 < obstacle_j.1 && player_j.1 > obstacle_j.0 && player.i == obstacle.i {
+            player.i = PLAYER_INITIAL_POSITION.x;
+            player.j = PLAYER_INITIAL_POSITION.z;
+            player_transform.translation = PLAYER_INITIAL_POSITION;
+        }
     }
 }
 
@@ -135,29 +160,29 @@ fn move_player(
         let mut rotation = 0.0;
 
         if keyboard_input.any_pressed([KeyCode::W, KeyCode::Up]) {
-            if player.i < BOARD_SIZE_I - 1 {
-                player.i += 1;
+            if player.i < BOARD_SIZE_I as f32 - 1.0 {
+                player.i += 1.0;
             }
             rotation = PI / 2.0;
             moved = true;
         }
         if keyboard_input.any_pressed([KeyCode::S, KeyCode::Down]) {
-            if player.i > 0 {
-                player.i -= 1;
+            if player.i > 0.0 {
+                player.i -= 1.0;
             }
             rotation = -PI / 2.0;
             moved = true;
         }
         if keyboard_input.any_pressed([KeyCode::D, KeyCode::Right]) {
-            if player.j < BOARD_SIZE_J - 1 {
-                player.j += 1;
+            if player.j < BOARD_SIZE_J as f32 - 1.0 {
+                player.j += 1.0;
             }
             rotation = 0.0;
             moved = true;
         }
         if keyboard_input.any_pressed([KeyCode::A, KeyCode::Left]) {
-            if player.j > 0 {
-                player.j -= 1;
+            if player.j > 0.0 {
+                player.j -= 1.0;
             }
             rotation = PI;
             moved = true;
@@ -200,9 +225,9 @@ fn focus_camera(
 fn goal_player(mut player_query: Query<(&mut Player, &mut Transform), With<Player>>) {
     let (mut player, mut player_transform) = player_query.single_mut();
 
-    if player.i >= BOARD_SIZE_I - 1 {
-        player.i = PLAYER_INITIAL_POSITION.x as usize;
-        player.j = PLAYER_INITIAL_POSITION.z as usize;
+    if player.i >= BOARD_SIZE_I as f32 - 1.0 {
+        player.i = PLAYER_INITIAL_POSITION.x;
+        player.j = PLAYER_INITIAL_POSITION.z;
         player_transform.translation = PLAYER_INITIAL_POSITION;
     }
 }
