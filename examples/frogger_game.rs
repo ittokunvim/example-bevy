@@ -22,6 +22,7 @@ fn main() {
         .add_system(move_player)
         .add_system(focus_camera)
         .add_system(goal_player)
+        .add_system(apply_velocity)
         .add_system(check_for_collision)
         .add_system(bevy::window::close_on_esc)
         .run();
@@ -44,6 +45,9 @@ struct Obstacle {
     i: f32,
     j: f32,
 }
+
+#[derive(Component, Deref, DerefMut)]
+struct Velocity(Vec3);
 
 fn setup(
     mut commands: Commands,
@@ -126,7 +130,18 @@ fn setup(
                 i: i as f32,
                 j: transform_z,
             },
+            Velocity(Vec3::new(0.0, 0.0, -0.5)),
         ));
+    }
+}
+
+fn apply_velocity(
+    mut query: Query<(&mut Obstacle, &mut Transform, &Velocity)>,
+    time_step: Res<FixedTime>,
+) {
+    for (mut obstacle, mut transform, velocity) in &mut query {
+        obstacle.j = transform.translation.z;
+        transform.translation.z += velocity.z * time_step.period.as_secs_f32();
     }
 }
 
