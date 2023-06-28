@@ -24,6 +24,7 @@ fn main() {
         .add_system(goal_player)
         .add_system(apply_velocity)
         .add_system(check_for_collision)
+        .add_system(move_obstacle)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -130,7 +131,7 @@ fn setup(
                 i: i as f32,
                 j: transform_z,
             },
-            Velocity(Vec3::new(0.0, 0.0, -0.5)),
+            Velocity(Vec3::new(0.0, 0.0, i as f32)),
         ));
     }
 }
@@ -207,6 +208,19 @@ fn move_player(
             player.move_cooldown.reset();
             player_transform.translation = Vec3::new(player.i as f32, 0.0, player.j as f32);
             player_transform.rotation = Quat::from_rotation_y(rotation);
+        }
+    }
+}
+
+fn move_obstacle(mut obstacle_query: Query<(&Transform, &mut Velocity), With<Obstacle>>) {
+    for (obstacle_transform, mut obstacle_velocity) in &mut obstacle_query {
+        let left_board_collision =
+            0.0 > obstacle_transform.translation.z;
+        let right_board_collision = (BOARD_SIZE_J as f32)
+            < obstacle_transform.translation.z + obstacle_transform.scale.z;
+
+        if left_board_collision || right_board_collision {
+            obstacle_velocity.z = -obstacle_velocity.z;
         }
     }
 }
