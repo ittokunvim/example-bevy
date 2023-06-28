@@ -11,13 +11,19 @@ const CAMERA_DISTANCE: Vec3 = Vec3::new(-2.8, 3.0, 3.5);
 
 const PLAYER_INITIAL_POSITION: Vec3 = Vec3::new(0.0, 0.0, BOARD_SIZE_J as f32 / 2.0 - 0.5);
 
+const SCOREBOARD_FONT_SIZE: f32 = 40.0;
+const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
+
 const BACKGROUND_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
+const TEXT_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+const SCORE_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(Scoreboard { score: 0 })
         .add_startup_system(setup)
         .add_system(move_player)
         .add_system(focus_camera)
@@ -25,6 +31,7 @@ fn main() {
         .add_system(apply_velocity)
         .add_system(check_for_collision)
         .add_system(move_obstacle)
+        .add_system(update_scoreboard)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -49,6 +56,11 @@ struct Obstacle {
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec3);
+
+#[derive(Resource)]
+struct Scoreboard {
+    score: isize,
+}
 
 fn setup(
     mut commands: Commands,
@@ -134,6 +146,36 @@ fn setup(
             Velocity(Vec3::new(0.0, 0.0, i as f32)),
         ));
     }
+
+    // Scoreboard
+    commands.spawn(
+        TextBundle::from_sections([
+            TextSection::new(
+                "Score: ",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: TEXT_COLOR,
+                    ..default()
+                },
+            ),
+            TextSection::from_style(TextStyle {
+                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: SCORE_COLOR,
+                ..default()
+            }),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                top: SCOREBOARD_TEXT_PADDING,
+                left: SCOREBOARD_TEXT_PADDING,
+                ..default()
+            },
+            ..default()
+        }),
+    );
 }
 
 fn apply_velocity(
@@ -146,9 +188,15 @@ fn apply_velocity(
     }
 }
 
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
+    let mut text = query.single_mut();
+    text.sections[1].value = scoreboard.score.to_string();
+}
+
 fn check_for_collision(
     mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
     obstacle_query: Query<&Obstacle, With<Obstacle>>,
+    mut scoreboard: ResMut<Scoreboard>,
 ) {
     let (mut player, mut player_transform) = player_query.single_mut();
     let player_j = (player.j as f32 - 0.5, player.j as f32 + 0.5);
@@ -157,6 +205,7 @@ fn check_for_collision(
         let obstacle_j = (obstacle.j as f32 - 0.5, obstacle.j as f32 + 0.5);
 
         if player_j.0 < obstacle_j.1 && player_j.1 > obstacle_j.0 && player.i == obstacle.i {
+            scoreboard.score -= 1;
             player.i = PLAYER_INITIAL_POSITION.x;
             player.j = PLAYER_INITIAL_POSITION.z;
             player_transform.translation = PLAYER_INITIAL_POSITION;
@@ -251,10 +300,14 @@ fn focus_camera(
     *camera_transform = camera_transform.looking_at(camera.looking_at, Vec3::Y);
 }
 
-fn goal_player(mut player_query: Query<(&mut Player, &mut Transform), With<Player>>) {
+fn goal_player(
+    mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
+    mut scoreboard: ResMut<Scoreboard>,
+) {
     let (mut player, mut player_transform) = player_query.single_mut();
 
     if player.i >= BOARD_SIZE_I as f32 - 1.0 {
+        scoreboard.score += 1;
         player.i = PLAYER_INITIAL_POSITION.x;
         player.j = PLAYER_INITIAL_POSITION.z;
         player_transform.translation = PLAYER_INITIAL_POSITION;
