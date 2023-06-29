@@ -9,12 +9,15 @@ const BOARD_SIZE_J: usize = 8;
 const CAMERA_SPEED: f32 = 2.0;
 const CAMERA_DISTANCE: Vec3 = Vec3::new(-2.8, 3.0, 3.5);
 
-const PLAYER_INITIAL_POSITION: Vec3 = Vec3::new(0.0, 0.0, BOARD_SIZE_J as f32 / 2.0 - 0.5);
+const PLAYER_INITIAL_POSITION: Vec3 = Vec3::new(0.0, 0.0, BOARD_SIZE_J as f32 / 2.0);
+
+const OBSTACLE_SIZE: f32 = 0.8;
 
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
+const OBSTACLE_COLOR: Color = Color::rgb(0.8, 0.7, 0.6);
 const TEXT_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const SCORE_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
 
@@ -25,12 +28,12 @@ fn main() {
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .insert_resource(Scoreboard { score: 0 })
         .add_startup_system(setup)
-        .add_system(move_player)
-        .add_system(focus_camera)
-        .add_system(goal_player)
         .add_system(apply_velocity)
         .add_system(check_for_collision)
+        .add_system(move_player)
         .add_system(move_obstacle)
+        .add_system(focus_camera)
+        .add_system(goal_player)
         .add_system(update_scoreboard)
         .add_system(bevy::window::close_on_esc)
         .run();
@@ -95,15 +98,15 @@ fn setup(
     // Board
     let cell_scene = asset_server.load("models/Frogger/tile.glb#Scene0");
 
-    (0..BOARD_SIZE_I).for_each(|i| {
-        (0..BOARD_SIZE_J).for_each(|j| {
+    for i in 0..BOARD_SIZE_I {
+        for j in 0..BOARD_SIZE_J {
             commands.spawn(SceneBundle {
                 transform: Transform::from_xyz(i as f32, -0.2, j as f32),
                 scene: cell_scene.clone(),
                 ..default()
             });
-        });
-    });
+        }
+    }
 
     // Player
     let player_asset = asset_server.load("models/Frogger/gekota.glb#Scene0");
@@ -134,9 +137,11 @@ fn setup(
         let transform_z = rand::thread_rng().gen_range(0..BOARD_SIZE_J) as f32;
         commands.spawn((
             PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-                material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-                transform: Transform::from_xyz(i as f32, 0.5, transform_z),
+                mesh: meshes.add(Mesh::from(shape::Cube {
+                    size: OBSTACLE_SIZE,
+                })),
+                material: materials.add(OBSTACLE_COLOR.into()),
+                transform: Transform::from_xyz(i as f32, OBSTACLE_SIZE / 2.0, transform_z),
                 ..default()
             },
             Obstacle {
@@ -148,19 +153,22 @@ fn setup(
     }
 
     // Scoreboard
+    let bold_font = asset_server.load("fonts/FiraSans-Bold.ttf");
+    let medium_font = asset_server.load("fonts/FiraMono-Medium.ttf");
+
     commands.spawn(
         TextBundle::from_sections([
             TextSection::new(
                 "Score: ",
                 TextStyle {
-                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font: bold_font,
                     font_size: SCOREBOARD_FONT_SIZE,
                     color: TEXT_COLOR,
                     ..default()
                 },
             ),
             TextSection::from_style(TextStyle {
-                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                font: medium_font,
                 font_size: SCOREBOARD_FONT_SIZE,
                 color: SCORE_COLOR,
                 ..default()
@@ -188,21 +196,24 @@ fn apply_velocity(
     }
 }
 
-fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
-    let mut text = query.single_mut();
-    text.sections[1].value = scoreboard.score.to_string();
-}
-
 fn check_for_collision(
     mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
     obstacle_query: Query<&Obstacle, With<Obstacle>>,
     mut scoreboard: ResMut<Scoreboard>,
 ) {
     let (mut player, mut player_transform) = player_query.single_mut();
-    let player_j = (player.j as f32 - 0.5, player.j as f32 + 0.5);
+    let player_half_size_z = player_transform.scale.z / 2.0;
+    let player_j = (
+        player.j as f32 - player_half_size_z,
+        player.j as f32 + player_half_size_z,
+    );
 
     for obstacle in &obstacle_query {
-        let obstacle_j = (obstacle.j as f32 - 0.5, obstacle.j as f32 + 0.5);
+        let obstacle_half_size_z = OBSTACLE_SIZE / 2.0;
+        let obstacle_j = (
+            obstacle.j as f32 - obstacle_half_size_z,
+            obstacle.j as f32 + obstacle_half_size_z,
+        );
 
         if player_j.0 < obstacle_j.1 && player_j.1 > obstacle_j.0 && player.i == obstacle.i {
             scoreboard.score -= 1;
@@ -211,6 +222,11 @@ fn check_for_collision(
             player_transform.translation = PLAYER_INITIAL_POSITION;
         }
     }
+}
+
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
+    let mut text = query.single_mut();
+    text.sections[1].value = scoreboard.score.to_string();
 }
 
 fn move_player(
@@ -263,10 +279,9 @@ fn move_player(
 
 fn move_obstacle(mut obstacle_query: Query<(&Transform, &mut Velocity), With<Obstacle>>) {
     for (obstacle_transform, mut obstacle_velocity) in &mut obstacle_query {
-        let left_board_collision =
-            0.0 > obstacle_transform.translation.z;
-        let right_board_collision = (BOARD_SIZE_J as f32)
-            < obstacle_transform.translation.z + obstacle_transform.scale.z;
+        let left_board_collision = 0.0 > obstacle_transform.translation.z;
+        let right_board_collision =
+            (BOARD_SIZE_J as f32) < obstacle_transform.translation.z + OBSTACLE_SIZE;
 
         if left_board_collision || right_board_collision {
             obstacle_velocity.z = -obstacle_velocity.z;
