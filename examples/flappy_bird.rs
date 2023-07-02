@@ -7,8 +7,12 @@ const PLAYER_SIZE: f32 = 25.0;
 const PLAYER_JUMP: f32 = 50.0;
 const PLAYER_GRAVITY: f32 = 2.0;
 
+const OBSTACLE_SIZE: Vec2 = Vec2::new(50.0, WINDOW_SIZE.y / 2.0 - OBSTACLE_SPACE / 2.0);
+const OBSTACLE_SPACE: f32 = 200.0;
+
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
+const OBSTACLE_COLOR: Color = Color::rgb(0.8, 0.1, 0.1);
 
 fn main() {
     App::new()
@@ -51,6 +55,38 @@ fn setup(
         },
         Player,
     ));
+
+    // Obstacle
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: OBSTACLE_COLOR,
+                custom_size: Some(OBSTACLE_SIZE),
+                ..default()
+            },
+            transform: Transform::from_translation(Vec3::new(
+                200.0,
+                WINDOW_SIZE.y / 2.0 - OBSTACLE_SIZE.y / 2.0,
+                0.,
+            )),
+            ..default()
+        },
+    ));
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: OBSTACLE_COLOR,
+                custom_size: Some(OBSTACLE_SIZE),
+                ..default()
+            },
+            transform: Transform::from_translation(Vec3::new(
+                200.0,
+                -WINDOW_SIZE.y / 2.0 + OBSTACLE_SIZE.y / 2.0,
+                0.,
+            )),
+            ..default()
+        },
+    ));
 }
 
 fn jump_player(
@@ -64,9 +100,7 @@ fn jump_player(
     }
 }
 
-fn player_gravity(
-    mut player_query: Query<&mut Transform, With<Player>>,
-) {
+fn player_gravity(mut player_query: Query<&mut Transform, With<Player>>) {
     let mut player_transform = player_query.single_mut();
 
     player_transform.translation.y -= PLAYER_GRAVITY;
