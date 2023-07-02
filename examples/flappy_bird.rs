@@ -5,6 +5,7 @@ const WINDOW_SIZE: Vec2 = Vec2::new(700.0, 700.0);
 
 const PLAYER_SIZE: f32 = 25.0;
 const PLAYER_JUMP: f32 = 50.0;
+const PLAYER_GRAVITY: f32 = 2.0;
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
@@ -22,6 +23,7 @@ fn main() {
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
         .add_system(jump_player)
+        .add_system(player_gravity)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -60,4 +62,12 @@ fn jump_player(
     if keyboard_input.just_pressed(KeyCode::Space) {
         player_transform.translation.y += PLAYER_JUMP;
     }
+}
+
+fn player_gravity(
+    mut player_query: Query<&mut Transform, With<Player>>,
+) {
+    let mut player_transform = player_query.single_mut();
+
+    player_transform.translation.y -= PLAYER_GRAVITY;
 }
