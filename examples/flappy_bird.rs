@@ -9,6 +9,7 @@ const PLAYER_GRAVITY: f32 = 2.0;
 
 const OBSTACLE_SIZE: Vec2 = Vec2::new(50.0, WINDOW_SIZE.y / 2.0 - OBSTACLE_SPACE / 2.0);
 const OBSTACLE_SPACE: f32 = 200.0;
+const OBSTACLE_SPEED: f32 = 200.0;
 
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
@@ -26,6 +27,7 @@ fn main() {
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
+        .add_system(apply_velocity)
         .add_system(jump_player)
         .add_system(player_gravity)
         .add_system(bevy::window::close_on_esc)
@@ -34,6 +36,9 @@ fn main() {
 
 #[derive(Component)]
 struct Player;
+
+#[derive(Component, Deref, DerefMut)]
+struct Velocity(Vec3);
 
 fn setup(
     mut commands: Commands,
@@ -65,12 +70,13 @@ fn setup(
                 ..default()
             },
             transform: Transform::from_translation(Vec3::new(
-                200.0,
+                WINDOW_SIZE.x / 2.0 + OBSTACLE_SIZE.x / 2.0,
                 WINDOW_SIZE.y / 2.0 - OBSTACLE_SIZE.y / 2.0,
                 0.,
             )),
             ..default()
         },
+        Velocity(Vec3::new(-OBSTACLE_SPEED, 0., 0.)),
     ));
     commands.spawn((
         SpriteBundle {
@@ -80,12 +86,13 @@ fn setup(
                 ..default()
             },
             transform: Transform::from_translation(Vec3::new(
-                200.0,
+                WINDOW_SIZE.x / 2.0 + OBSTACLE_SIZE.x / 2.0,
                 -WINDOW_SIZE.y / 2.0 + OBSTACLE_SIZE.y / 2.0,
                 0.,
             )),
             ..default()
         },
+        Velocity(Vec3::new(-OBSTACLE_SPEED, 0., 0.)),
     ));
 }
 
@@ -104,4 +111,10 @@ fn player_gravity(mut player_query: Query<&mut Transform, With<Player>>) {
     let mut player_transform = player_query.single_mut();
 
     player_transform.translation.y -= PLAYER_GRAVITY;
+}
+
+fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
+    for (mut transform, velocity) in &mut query {
+        transform.translation.x += velocity.x * time_step.period.as_secs_f32();
+    }
 }
