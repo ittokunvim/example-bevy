@@ -15,6 +15,9 @@ const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
 const OBSTACLE_COLOR: Color = Color::rgb(0.8, 0.1, 0.1);
 
+#[derive(Resource)]
+struct ObstacleSpawnTimer(Timer);
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -24,12 +27,17 @@ fn main() {
             }),
             ..default()
         }))
+        .insert_resource(ObstacleSpawnTimer(Timer::from_seconds(
+            2.0,
+            TimerMode::Repeating,
+        )))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
         .add_system(apply_velocity)
         .add_system(jump_player)
         .add_system(player_gravity)
+        .add_system(spawn_obstacles)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -55,44 +63,10 @@ fn setup(
                 .add(shape::RegularPolygon::new(PLAYER_SIZE, 4).into())
                 .into(),
             material: materials.add(ColorMaterial::from(PLAYER_COLOR)),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
             ..default()
         },
         Player,
-    ));
-
-    // Obstacle
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: OBSTACLE_COLOR,
-                custom_size: Some(OBSTACLE_SIZE),
-                ..default()
-            },
-            transform: Transform::from_translation(Vec3::new(
-                WINDOW_SIZE.x / 2.0 + OBSTACLE_SIZE.x / 2.0,
-                WINDOW_SIZE.y / 2.0 - OBSTACLE_SIZE.y / 2.0,
-                0.,
-            )),
-            ..default()
-        },
-        Velocity(Vec3::new(-OBSTACLE_SPEED, 0., 0.)),
-    ));
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: OBSTACLE_COLOR,
-                custom_size: Some(OBSTACLE_SIZE),
-                ..default()
-            },
-            transform: Transform::from_translation(Vec3::new(
-                WINDOW_SIZE.x / 2.0 + OBSTACLE_SIZE.x / 2.0,
-                -WINDOW_SIZE.y / 2.0 + OBSTACLE_SIZE.y / 2.0,
-                0.,
-            )),
-            ..default()
-        },
-        Velocity(Vec3::new(-OBSTACLE_SPEED, 0., 0.)),
     ));
 }
 
@@ -116,5 +90,33 @@ fn player_gravity(mut player_query: Query<&mut Transform, With<Player>>) {
 fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
     for (mut transform, velocity) in &mut query {
         transform.translation.x += velocity.x * time_step.period.as_secs_f32();
+    }
+}
+
+fn spawn_obstacles(mut commands: Commands, time: Res<Time>, mut timer: ResMut<ObstacleSpawnTimer>) {
+    if !timer.0.tick(time.delta()).finished() {
+        return;
+    }
+
+    let x = WINDOW_SIZE.x / 2.0 + OBSTACLE_SIZE.x / 2.0;
+    let mut y = WINDOW_SIZE.y / 2.0 - OBSTACLE_SIZE.y / 2.0;
+
+    for i in 0..2 {
+        if i == 1 {
+            y = -y;
+        }
+
+        commands.spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    color: OBSTACLE_COLOR,
+                    custom_size: Some(OBSTACLE_SIZE),
+                    ..default()
+                },
+                transform: Transform::from_translation(Vec2::new(x, y).extend(0.0)),
+                ..default()
+            },
+            Velocity(Vec3::new(-OBSTACLE_SPEED, 0., 0.)),
+        ));
     }
 }
