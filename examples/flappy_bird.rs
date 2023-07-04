@@ -38,6 +38,7 @@ fn main() {
         .add_system(jump_player)
         .add_system(player_gravity)
         .add_system(spawn_obstacles)
+        .add_system(despawn_obstacles)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -46,6 +47,9 @@ fn main() {
 struct Player {
     vel_y: f32,
 }
+
+#[derive(Component)]
+struct Obstacle;
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec3);
@@ -123,7 +127,19 @@ fn spawn_obstacles(mut commands: Commands, time: Res<Time>, mut timer: ResMut<Ob
                 transform: Transform::from_translation(Vec2::new(x, y).extend(0.0)),
                 ..default()
             },
+            Obstacle,
             Velocity(Vec3::new(-OBSTACLE_SPEED, 0., 0.)),
         ));
+    }
+}
+
+fn despawn_obstacles(
+    mut commands: Commands,
+    mut obstacle_query: Query<(Entity, &Transform), With<Obstacle>>,
+) {
+    for (obstacle_entity, obstacle_transform) in &mut obstacle_query {
+        if obstacle_transform.translation.x < -WINDOW_SIZE.x / 2.0 - OBSTACLE_SIZE.x / 2.0 {
+            commands.entity(obstacle_entity).despawn();
+        }
     }
 }
