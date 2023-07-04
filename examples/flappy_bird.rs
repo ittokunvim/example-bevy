@@ -4,7 +4,7 @@ use bevy::sprite::MaterialMesh2dBundle;
 const WINDOW_SIZE: Vec2 = Vec2::new(700.0, 700.0);
 
 const PLAYER_SIZE: f32 = 25.0;
-const PLAYER_JUMP: f32 = 50.0;
+const PLAYER_JUMP: f32 = 25.0;
 const PLAYER_GRAVITY: f32 = 2.0;
 
 const OBSTACLE_SIZE: Vec2 = Vec2::new(50.0, WINDOW_SIZE.y / 2.0 - OBSTACLE_SPACE / 2.0);
@@ -43,7 +43,9 @@ fn main() {
 }
 
 #[derive(Component)]
-struct Player;
+struct Player {
+    vel_y: f32,
+}
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec3);
@@ -66,18 +68,23 @@ fn setup(
             transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
             ..default()
         },
-        Player,
+        Player { vel_y: 0.0 },
     ));
 }
 
 fn jump_player(
     keyboard_input: Res<Input<KeyCode>>,
-    mut player_query: Query<&mut Transform, With<Player>>,
+    mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
 ) {
-    let mut player_transform = player_query.single_mut();
+    let (mut player, mut player_transform) = player_query.single_mut();
 
     if keyboard_input.just_pressed(KeyCode::Space) {
-        player_transform.translation.y += PLAYER_JUMP;
+        player.vel_y += PLAYER_JUMP;
+    }
+
+    if player.vel_y > 0.0 {
+        player.vel_y -= PLAYER_GRAVITY;
+        player_transform.translation.y += player.vel_y;
     }
 }
 
