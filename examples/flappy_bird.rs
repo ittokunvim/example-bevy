@@ -1,13 +1,15 @@
 use bevy::prelude::*;
+use bevy::sprite::collide_aabb::collide;
 use bevy::sprite::MaterialMesh2dBundle;
 
 const WINDOW_SIZE: Vec2 = Vec2::new(700.0, 700.0);
 
-const PLAYER_SIZE: f32 = 25.0;
+const PLAYER_SIZE: Vec3 = Vec3::new(25.0, 25.0, 0.0);
 const PLAYER_JUMP: f32 = 25.0;
 const PLAYER_GRAVITY: f32 = 2.0;
+const PLAYER_COLLIDE_COOLDOWN: f32 = 1.0;
 
-const OBSTACLE_SIZE: Vec2 = Vec2::new(50.0, WINDOW_SIZE.y / 2.0 - OBSTACLE_SPACE / 2.0);
+const OBSTACLE_SIZE: Vec3 = Vec3::new(50.0, WINDOW_SIZE.y / 2.0 - OBSTACLE_SPACE / 2.0, 0.0);
 const OBSTACLE_SPACE: f32 = 200.0;
 const OBSTACLE_SPEED: f32 = 200.0;
 
@@ -39,6 +41,7 @@ fn main() {
         .add_system(player_gravity)
         .add_system(spawn_obstacles)
         .add_system(despawn_obstacles)
+        .add_system(obstacle_collision)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -46,6 +49,7 @@ fn main() {
 #[derive(Component)]
 struct Player {
     vel_y: f32,
+    collide_cooldown: Timer,
 }
 
 #[derive(Component)]
@@ -65,14 +69,19 @@ fn setup(
     // Player
     commands.spawn((
         MaterialMesh2dBundle {
-            mesh: meshes
-                .add(shape::RegularPolygon::new(PLAYER_SIZE, 4).into())
-                .into(),
+            mesh: meshes.add(shape::RegularPolygon::new(1.0, 4).into()).into(),
             material: materials.add(ColorMaterial::from(PLAYER_COLOR)),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
+            transform: Transform {
+                translation: Vec3::new(0.0, 0.0, 1.0),
+                scale: PLAYER_SIZE,
+                ..default()
+            },
             ..default()
         },
-        Player { vel_y: 0.0 },
+        Player {
+            vel_y: 0.0,
+            collide_cooldown: Timer::from_seconds(PLAYER_COLLIDE_COOLDOWN, TimerMode::Once),
+        },
     ));
 }
 
@@ -121,10 +130,14 @@ fn spawn_obstacles(mut commands: Commands, time: Res<Time>, mut timer: ResMut<Ob
             SpriteBundle {
                 sprite: Sprite {
                     color: OBSTACLE_COLOR,
-                    custom_size: Some(OBSTACLE_SIZE),
+                    custom_size: Some(Vec2::new(1.0, 1.0)),
                     ..default()
                 },
-                transform: Transform::from_translation(Vec2::new(x, y).extend(0.0)),
+                transform: Transform {
+                    translation: Vec2::new(x, y).extend(0.0),
+                    scale: OBSTACLE_SIZE,
+                    ..default()
+                },
                 ..default()
             },
             Obstacle,
@@ -140,6 +153,33 @@ fn despawn_obstacles(
     for (obstacle_entity, obstacle_transform) in &mut obstacle_query {
         if obstacle_transform.translation.x < -WINDOW_SIZE.x / 2.0 - OBSTACLE_SIZE.x / 2.0 {
             commands.entity(obstacle_entity).despawn();
+        }
+    }
+}
+
+fn obstacle_collision(
+    mut player_query: Query<(&mut Player, &mut Transform), (With<Player>, Without<Obstacle>)>,
+    obstacle_query: Query<&Transform, With<Obstacle>>,
+    time: Res<Time>,
+) {
+    let (mut player, mut player_transform) = player_query.single_mut();
+    let player_size = player_transform.scale.truncate();
+
+    if !player.collide_cooldown.tick(time.delta()).finished() {
+        return;
+    }
+
+    for obstacle_transform in &obstacle_query {
+        let collision = collide(
+            player_transform.translation,
+            player_size,
+            obstacle_transform.translation,
+            obstacle_transform.scale.truncate(),
+        );
+
+        if let Some(_collision) = collision {
+            player.collide_cooldown.reset();
+            player_transform.translation = Vec3::new(0.0, 0.0, 0.0);
         }
     }
 }
