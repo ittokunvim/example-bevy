@@ -13,12 +13,22 @@ const OBSTACLE_SIZE: Vec3 = Vec3::new(50.0, WINDOW_SIZE.y / 2.0 - OBSTACLE_SPACE
 const OBSTACLE_SPACE: f32 = 200.0;
 const OBSTACLE_SPEED: f32 = 200.0;
 
+const SCOREBOARD_FONT_SIZE: f32 = 24.0;
+const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
+
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
 const OBSTACLE_COLOR: Color = Color::rgb(0.8, 0.1, 0.1);
+const TEXT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
+const SCOREBOARD_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 
 #[derive(Resource)]
 struct ObstacleSpawnTimer(Timer);
+
+#[derive(Resource)]
+struct Scoreboard {
+    score: isize,
+}
 
 fn main() {
     App::new()
@@ -33,6 +43,7 @@ fn main() {
             2.0,
             TimerMode::Repeating,
         )))
+        .insert_resource(Scoreboard { score: 0 })
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
@@ -42,6 +53,7 @@ fn main() {
         .add_system(spawn_obstacles)
         .add_system(despawn_obstacles)
         .add_system(obstacle_collision)
+        .add_system(update_scoreboard)
         .add_system(bevy::window::close_on_esc)
         .run();
 }
@@ -62,6 +74,7 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     // Camera
     commands.spawn(Camera2dBundle::default());
@@ -83,6 +96,39 @@ fn setup(
             collide_cooldown: Timer::from_seconds(PLAYER_COLLIDE_COOLDOWN, TimerMode::Once),
         },
     ));
+
+    // Scoreboard
+    let font_bold: Handle<Font> = asset_server.load("fonts/FiraSans-Bold.ttf");
+    let font_medium: Handle<Font> = asset_server.load("fonts/FiraMono-Medium.ttf");
+
+    commands.spawn(
+        TextBundle::from_sections([
+            TextSection::new(
+                "Score: ",
+                TextStyle {
+                    font: font_bold,
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: TEXT_COLOR,
+                    ..default()
+                },
+            ),
+            TextSection::from_style(TextStyle {
+                font: font_medium,
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: SCOREBOARD_COLOR,
+                ..default()
+            }),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                top: SCOREBOARD_TEXT_PADDING,
+                left: SCOREBOARD_TEXT_PADDING,
+                ..default()
+            },
+            ..default()
+        }),
+    );
 }
 
 fn jump_player(
@@ -158,11 +204,12 @@ fn despawn_obstacles(
 }
 
 fn obstacle_collision(
-    mut player_query: Query<(&mut Player, &mut Transform), (With<Player>, Without<Obstacle>)>,
+    mut player_query: Query<(&mut Player, &Transform), With<Player>>,
     obstacle_query: Query<&Transform, With<Obstacle>>,
     time: Res<Time>,
+    mut scoreboard: ResMut<Scoreboard>,
 ) {
-    let (mut player, mut player_transform) = player_query.single_mut();
+    let (mut player, player_transform) = player_query.single_mut();
     let player_size = player_transform.scale.truncate();
 
     if !player.collide_cooldown.tick(time.delta()).finished() {
@@ -178,8 +225,13 @@ fn obstacle_collision(
         );
 
         if let Some(_collision) = collision {
+            scoreboard.score -= 1;
             player.collide_cooldown.reset();
-            player_transform.translation = Vec3::new(0.0, 0.0, 0.0);
         }
     }
+}
+
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
+    let mut text = query.single_mut();
+    text.sections[1].value = scoreboard.score.to_string();
 }
