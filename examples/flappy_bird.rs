@@ -8,6 +8,7 @@ const PLAYER_SIZE: Vec3 = Vec3::new(25.0, 25.0, 0.0);
 const PLAYER_JUMP: f32 = 25.0;
 const PLAYER_GRAVITY: f32 = 2.0;
 const PLAYER_COLLIDE_COOLDOWN: f32 = 1.0;
+const PLAYER_LIFE: usize = 3;
 
 const OBSTACLE_SIZE: Vec3 = Vec3::new(50.0, WINDOW_SIZE.y / 2.0 - OBSTACLE_SPACE / 2.0, 0.0);
 const OBSTACLE_SPACE: f32 = 200.0;
@@ -50,6 +51,7 @@ fn main() {
         .add_system(apply_velocity)
         .add_system(jump_player)
         .add_system(player_gravity)
+        .add_system(despawn_player)
         .add_system(spawn_obstacles)
         .add_system(despawn_obstacles)
         .add_system(obstacle_collision)
@@ -63,6 +65,7 @@ fn main() {
 struct Player {
     vel_y: f32,
     collide_cooldown: Timer,
+    life: usize,
 }
 
 #[derive(Component)]
@@ -97,6 +100,7 @@ fn setup(
         Player {
             vel_y: 0.0,
             collide_cooldown: Timer::from_seconds(PLAYER_COLLIDE_COOLDOWN, TimerMode::Once),
+            life: PLAYER_LIFE,
         },
     ));
 
@@ -138,6 +142,10 @@ fn jump_player(
     keyboard_input: Res<Input<KeyCode>>,
     mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
 ) {
+    if player_query.is_empty() {
+        return;
+    }
+
     let (mut player, mut player_transform) = player_query.single_mut();
 
     if keyboard_input.just_pressed(KeyCode::Space) {
@@ -151,9 +159,25 @@ fn jump_player(
 }
 
 fn player_gravity(mut player_query: Query<&mut Transform, With<Player>>) {
+    if player_query.is_empty() {
+        return;
+    }
+
     let mut player_transform = player_query.single_mut();
 
     player_transform.translation.y -= PLAYER_GRAVITY;
+}
+
+fn despawn_player(mut commands: Commands, player_query: Query<(Entity, &Player), With<Player>>) {
+    if player_query.is_empty() {
+        return;
+    }
+
+    let (player_entity, player) = &player_query.single();
+
+    if player.life == 0 {
+        commands.entity(*player_entity).despawn();
+    }
 }
 
 fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
@@ -211,6 +235,10 @@ fn obstacle_collision(
     obstacle_query: Query<&Transform, With<Obstacle>>,
     time: Res<Time>,
 ) {
+    if player_query.is_empty() {
+        return;
+    }
+
     let (mut player, player_transform) = player_query.single_mut();
     let player_size = player_transform.scale.truncate();
 
@@ -228,6 +256,7 @@ fn obstacle_collision(
 
         if let Some(_collision) = collision {
             player.collide_cooldown.reset();
+            player.life -= 1;
         }
     }
 }
@@ -237,6 +266,10 @@ fn pass_obstacle(
     mut obstacle_query: Query<(&mut Obstacle, &Transform), With<Obstacle>>,
     mut scoreboard: ResMut<Scoreboard>,
 ) {
+    if player_query.is_empty() {
+        return;
+    }
+
     let player_transform = player_query.single();
 
     for (mut obstacle, obstacle_transform) in &mut obstacle_query {
