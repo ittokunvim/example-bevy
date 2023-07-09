@@ -27,7 +27,7 @@ struct ObstacleSpawnTimer(Timer);
 
 #[derive(Resource)]
 struct Scoreboard {
-    score: isize,
+    score: f32,
 }
 
 fn main() {
@@ -43,7 +43,7 @@ fn main() {
             2.0,
             TimerMode::Repeating,
         )))
-        .insert_resource(Scoreboard { score: 0 })
+        .insert_resource(Scoreboard { score: -1.0 })
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
@@ -53,6 +53,7 @@ fn main() {
         .add_system(spawn_obstacles)
         .add_system(despawn_obstacles)
         .add_system(obstacle_collision)
+        .add_system(pass_obstacle)
         .add_system(update_scoreboard)
         .add_system(bevy::window::close_on_esc)
         .run();
@@ -65,7 +66,9 @@ struct Player {
 }
 
 #[derive(Component)]
-struct Obstacle;
+struct Obstacle {
+    is_passed: bool,
+}
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec3);
@@ -186,7 +189,7 @@ fn spawn_obstacles(mut commands: Commands, time: Res<Time>, mut timer: ResMut<Ob
                 },
                 ..default()
             },
-            Obstacle,
+            Obstacle { is_passed: false },
             Velocity(Vec3::new(-OBSTACLE_SPEED, 0., 0.)),
         ));
     }
@@ -207,7 +210,6 @@ fn obstacle_collision(
     mut player_query: Query<(&mut Player, &Transform), With<Player>>,
     obstacle_query: Query<&Transform, With<Obstacle>>,
     time: Res<Time>,
-    mut scoreboard: ResMut<Scoreboard>,
 ) {
     let (mut player, player_transform) = player_query.single_mut();
     let player_size = player_transform.scale.truncate();
@@ -225,8 +227,26 @@ fn obstacle_collision(
         );
 
         if let Some(_collision) = collision {
-            scoreboard.score -= 1;
             player.collide_cooldown.reset();
+        }
+    }
+}
+
+fn pass_obstacle(
+    player_query: Query<&Transform, With<Player>>,
+    mut obstacle_query: Query<(&mut Obstacle, &Transform), With<Obstacle>>,
+    mut scoreboard: ResMut<Scoreboard>,
+) {
+    let player_transform = player_query.single();
+
+    for (mut obstacle, obstacle_transform) in &mut obstacle_query {
+        if obstacle.is_passed {
+            continue;
+        }
+
+        if player_transform.translation.x < obstacle_transform.translation.x {
+            obstacle.is_passed = true;
+            scoreboard.score += 0.5;
         }
     }
 }
