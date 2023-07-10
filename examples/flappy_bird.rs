@@ -29,6 +29,7 @@ struct ObstacleSpawnTimer(Timer);
 #[derive(Resource)]
 struct Scoreboard {
     score: f32,
+    life: usize,
 }
 
 fn main() {
@@ -44,7 +45,7 @@ fn main() {
             2.0,
             TimerMode::Repeating,
         )))
-        .insert_resource(Scoreboard { score: -1.0 })
+        .insert_resource(Scoreboard { score: -1.0, life: PLAYER_LIFE })
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
@@ -107,24 +108,21 @@ fn setup(
     // Scoreboard
     let font_bold: Handle<Font> = asset_server.load("fonts/FiraSans-Bold.ttf");
     let font_medium: Handle<Font> = asset_server.load("fonts/FiraMono-Medium.ttf");
+    let text_closure = |font: Handle<Font>, text: &str, color: Color| -> TextSection {
+        let style = TextStyle {
+            font,
+            font_size: SCOREBOARD_FONT_SIZE,
+            color,
+        };
+        TextSection::new(text, style)
+    };
 
     commands.spawn(
         TextBundle::from_sections([
-            TextSection::new(
-                "Score: ",
-                TextStyle {
-                    font: font_bold,
-                    font_size: SCOREBOARD_FONT_SIZE,
-                    color: TEXT_COLOR,
-                    ..default()
-                },
-            ),
-            TextSection::from_style(TextStyle {
-                font: font_medium,
-                font_size: SCOREBOARD_FONT_SIZE,
-                color: SCOREBOARD_COLOR,
-                ..default()
-            }),
+            text_closure(font_bold.clone(), "Score: ", TEXT_COLOR),
+            text_closure(font_medium.clone(), "", SCOREBOARD_COLOR),
+            text_closure(font_bold.clone(), ", Life: ", TEXT_COLOR),
+            text_closure(font_medium.clone(), "", SCOREBOARD_COLOR),
         ])
         .with_style(Style {
             position_type: PositionType::Absolute,
@@ -234,6 +232,7 @@ fn obstacle_collision(
     mut player_query: Query<(&mut Player, &Transform), With<Player>>,
     obstacle_query: Query<&Transform, With<Obstacle>>,
     time: Res<Time>,
+    mut scoreboard: ResMut<Scoreboard>,
 ) {
     if player_query.is_empty() {
         return;
@@ -257,6 +256,7 @@ fn obstacle_collision(
         if let Some(_collision) = collision {
             player.collide_cooldown.reset();
             player.life -= 1;
+            scoreboard.life -= 1;
         }
     }
 }
@@ -287,4 +287,5 @@ fn pass_obstacle(
 fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
     let mut text = query.single_mut();
     text.sections[1].value = scoreboard.score.to_string();
+    text.sections[3].value = scoreboard.life.to_string();
 }
