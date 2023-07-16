@@ -13,7 +13,7 @@
 以下のコマンドを実行することで、ゲームを開始します。
 
 ```bash
-cargo run --example timing
+cargo run --example timing_game
 ```
 
 [ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/timing.rs)
@@ -25,7 +25,7 @@ cargo run --example timing
 以下のコマンドを実行することで、ゲームを開始します。
 
 ```bash
-cargo run --example click
+cargo run --example click_game
 ```
 
 [ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/click.rs)
@@ -49,7 +49,7 @@ cargo run --example 2d_shooting
 以下のコマンドを実行することで、ゲームを開始します。
 
 ```bash
-cargo run --example frogger_game
+cargo run --example frogger
 ```
 
 [ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/frogger_game.rs)
