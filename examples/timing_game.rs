@@ -35,15 +35,18 @@ fn main() {
         .insert_resource(Scoreboard { score: 0 })
         // .add_event::<CollisionEvent>()
         .add_event::<TimingEvent>()
-        .add_startup_system(setup)
-        .add_systems((
-            check_for_collisions,
-            apply_velocity.before(check_for_collisions),
-            decide_timing.after(apply_velocity),
-            play_timing_sound.after(decide_timing),
-        ))
-        .add_system(update_scoreboard)
-        .add_system(bevy::window::close_on_esc)
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (
+                check_for_collisions,
+                apply_velocity,
+                decide_timing,
+                play_timing_sound,
+            ),
+        )
+        .add_systems(Update, update_scoreboard)
+        .add_systems(Startup, bevy::window::close_on_esc)
         .run();
 }
 
