@@ -35,10 +35,10 @@ fn main() {
         .insert_resource(Scoreboard {
             ball_count: BALL_COUNT,
         })
-        .add_startup_system(setup)
-        .add_systems((apply_velocity, check_for_collisions, mouse_click))
-        .add_system(update_scoreboard)
-        .add_system(bevy::window::close_on_esc)
+        .add_systems(Startup, setup)
+        .add_systems(Update, (apply_velocity, check_for_collisions, mouse_click))
+        .add_systems(Update, update_scoreboard)
+        .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
 
@@ -110,11 +110,8 @@ fn setup(
         ])
         .with_style(Style {
             position_type: PositionType::Absolute,
-            position: UiRect {
-                top: SCOREBOARD_TEXT_PADDING,
-                left: SCOREBOARD_TEXT_PADDING,
-                ..default()
-            },
+            top: SCOREBOARD_TEXT_PADDING,
+            left: SCOREBOARD_TEXT_PADDING,
             ..default()
         }),
     );
@@ -164,7 +161,7 @@ fn mouse_click(
         let window_center = Vec2::new(window.width() / 2., window.height() / 2.);
         cursor_position = Vec2::new(
             cursor_position.x - window_center.x,
-            cursor_position.y - window_center.y,
+            -cursor_position.y + window_center.y,
         );
 
         for (ball_entity, ball_transform) in balls_query.iter() {
