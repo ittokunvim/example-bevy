@@ -54,14 +54,17 @@ fn main() {
             ENEMY_ATTACK_INTERVAL,
             TimerMode::Repeating,
         )))
-        .add_startup_system(setup)
-        .add_system(apply_velocity)
-        .add_system(move_player)
-        .add_system(player_shoot)
-        .add_system(move_enemy)
-        .add_system(enemy_shoot)
-        .add_system(bullet_collision)
-        .add_systems((remove_bullet, update_scoreboard, bevy::window::close_on_esc))
+        .add_systems(Startup, setup)
+        .add_systems(Update, apply_velocity)
+        .add_systems(Update, move_player)
+        .add_systems(Update, player_shoot)
+        .add_systems(Update, move_enemy)
+        .add_systems(Update, enemy_shoot)
+        .add_systems(Update, bullet_collision)
+        .add_systems(
+            Update,
+            (remove_bullet, update_scoreboard, bevy::window::close_on_esc),
+        )
         .run();
 }
 
@@ -161,11 +164,8 @@ fn setup(
         ])
         .with_style(Style {
             position_type: PositionType::Absolute,
-            position: UiRect {
-                top: Val::Px(SCOREBOARD_TEXT_PADDING),
-                left: Val::Px(SCOREBOARD_TEXT_PADDING),
-                ..default()
-            },
+            top: Val::Px(SCOREBOARD_TEXT_PADDING),
+            left: Val::Px(SCOREBOARD_TEXT_PADDING),
             ..default()
         }),
     );
