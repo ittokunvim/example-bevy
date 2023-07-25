@@ -27,15 +27,15 @@ fn main() {
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .insert_resource(Scoreboard { score: 0 })
-        .add_startup_system(setup)
-        .add_system(apply_velocity)
-        .add_system(check_for_collision)
-        .add_system(move_player)
-        .add_system(move_obstacle)
-        .add_system(focus_camera)
-        .add_system(goal_player)
-        .add_system(update_scoreboard)
-        .add_system(bevy::window::close_on_esc)
+        .add_systems(Startup, setup)
+        .add_systems(Update, apply_velocity)
+        .add_systems(Update, check_for_collision)
+        .add_systems(Update, move_player)
+        .add_systems(Update, move_obstacle)
+        .add_systems(Update, focus_camera)
+        .add_systems(Update, goal_player)
+        .add_systems(Update, update_scoreboard)
+        .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
 
@@ -176,11 +176,8 @@ fn setup(
         ])
         .with_style(Style {
             position_type: PositionType::Absolute,
-            position: UiRect {
-                top: SCOREBOARD_TEXT_PADDING,
-                left: SCOREBOARD_TEXT_PADDING,
-                ..default()
-            },
+            top: SCOREBOARD_TEXT_PADDING,
+            left: SCOREBOARD_TEXT_PADDING,
             ..default()
         }),
     );

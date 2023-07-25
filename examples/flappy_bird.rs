@@ -51,16 +51,17 @@ fn main() {
             score: -1.0,
             life: PLAYER_LIFE,
         })
-        .add_startup_system(setup)
-        .add_systems((jump_player, player_gravity, despawn_player))
-        .add_systems((
-            spawn_obstacles,
-            despawn_obstacles,
-            obstacle_collision,
-            pass_obstacle,
-        ))
-        .add_systems((apply_velocity, update_scoreboard))
-        .add_system(bevy::window::close_on_esc)
+        .add_systems(Startup, setup)
+        .add_systems(Update, jump_player)
+        .add_systems(Update, player_gravity)
+        .add_systems(Update, despawn_player)
+        .add_systems(Update, spawn_obstacles)
+        .add_systems(Update, despawn_obstacles)
+        .add_systems(Update, obstacle_collision)
+        .add_systems(Update, pass_obstacle)
+        .add_systems(Update, apply_velocity)
+        .add_systems(Update, update_scoreboard)
+        .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
 
@@ -128,11 +129,8 @@ fn setup(
         ])
         .with_style(Style {
             position_type: PositionType::Absolute,
-            position: UiRect {
-                top: SCOREBOARD_TEXT_PADDING,
-                left: SCOREBOARD_TEXT_PADDING,
-                ..default()
-            },
+            top: SCOREBOARD_TEXT_PADDING,
+            left: SCOREBOARD_TEXT_PADDING,
             ..default()
         }),
     );
