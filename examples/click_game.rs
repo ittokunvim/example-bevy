@@ -1,4 +1,6 @@
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow};
+use bevy::{
+    input::keyboard::KeyboardInput, prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow,
+};
 use rand::distributions::{Distribution, Uniform};
 
 const WINDOW_WIDTH: f32 = 1080.0;
@@ -16,10 +18,26 @@ const TOP_WALL: f32 = 300.0;
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 
+const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
+const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
+
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const BALL_COLOR: Color = Color::rgb(0.9, 0.3, 0.3);
 const TEXT_COLOR: Color = Color::rgb(0.5, 0.5, 1.0);
 const SCORE_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
+const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
+enum AppState {
+    #[default]
+    MainMenu,
+    InGame,
+}
+
+#[derive(Resource, Component)]
+struct Scoreboard {
+    ball_count: usize,
+}
 
 fn main() {
     App::new()
@@ -30,14 +48,18 @@ fn main() {
             }),
             ..default()
         }))
+        .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .insert_resource(Scoreboard {
             ball_count: BALL_COUNT,
         })
         .add_systems(Startup, setup)
-        .add_systems(Update, (apply_velocity, check_for_collisions, mouse_click))
-        .add_systems(Update, update_scoreboard)
+        .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
+        .add_systems(Update, mouse_click.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, check_for_collisions.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -48,10 +70,8 @@ struct Ball;
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
 
-#[derive(Resource)]
-struct Scoreboard {
-    ball_count: usize,
-}
+#[derive(Component)]
+struct PressAnyKey;
 
 fn setup(
     mut commands: Commands,
@@ -87,7 +107,7 @@ fn setup(
     }
 
     // Scoreboard
-    commands.spawn(
+    commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
                 "Ball Count: ",
@@ -114,36 +134,42 @@ fn setup(
             left: SCOREBOARD_TEXT_PADDING,
             ..default()
         }),
-    );
+        Scoreboard { ball_count: 0 },
+    ));
+
+    // Press any key
+    commands.spawn((
+        TextBundle::from_section(
+            "Press Any Key ...",
+            TextStyle {
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                font_size: PRESSANYKEY_FONT_SIZE,
+                color: PRESSANYKEY_COLOR,
+            },
+        )
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            bottom: PRESSANYKEY_TEXT_PADDING,
+            right: PRESSANYKEY_TEXT_PADDING,
+            ..default()
+        }),
+        PressAnyKey,
+    ));
 }
 
-fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
-    for (mut transform, velocity) in &mut query {
-        transform.translation.x += velocity.x * time_step.period.as_secs_f32();
-        transform.translation.y += velocity.y * time_step.period.as_secs_f32();
-    }
-}
+fn press_any_key(
+    mut keyboard_event: EventReader<KeyboardInput>,
+    pressanykey_query: Query<Entity, With<PressAnyKey>>,
+    mut commands: Commands,
+    mut now_state: ResMut<State<AppState>>,
+    mut inkey: ResMut<Input<KeyCode>>,
+) {
+    for _event in keyboard_event.iter() {
+        let pressanykey_entity = pressanykey_query.single();
+        commands.entity(pressanykey_entity).despawn();
 
-fn check_for_collisions(mut balls_query: Query<(&mut Velocity, &Transform), With<Ball>>) {
-    for (mut ball_velocity, ball_transform) in balls_query.iter_mut() {
-        let ball_size = ball_transform.scale.truncate();
-
-        let left_window_collision =
-            WINDOW_WIDTH / 2.0 < ball_transform.translation.x + ball_size.x / 2.0;
-        let right_window_collision =
-            -WINDOW_WIDTH / 2.0 > ball_transform.translation.x - ball_size.x / 2.0;
-        let top_window_collision =
-            WINDOW_HEIGHT / 2.0 < ball_transform.translation.y + ball_size.y / 2.0;
-        let bottom_window_collision =
-            -WINDOW_HEIGHT / 2.0 > ball_transform.translation.y - ball_size.y / 2.0;
-
-        if left_window_collision || right_window_collision {
-            ball_velocity.x = -ball_velocity.x;
-        }
-
-        if top_window_collision || bottom_window_collision {
-            ball_velocity.y = -ball_velocity.y;
-        }
+        *now_state = State::new(AppState::InGame);
+        inkey.reset_all();
     }
 }
 
@@ -175,7 +201,37 @@ fn mouse_click(
     }
 }
 
-fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
-    let mut text = query.single_mut();
+fn check_for_collisions(mut balls_query: Query<(&mut Velocity, &Transform), With<Ball>>) {
+    for (mut ball_velocity, ball_transform) in balls_query.iter_mut() {
+        let ball_size = ball_transform.scale.truncate();
+
+        let left_window_collision =
+            WINDOW_WIDTH / 2.0 < ball_transform.translation.x + ball_size.x / 2.0;
+        let right_window_collision =
+            -WINDOW_WIDTH / 2.0 > ball_transform.translation.x - ball_size.x / 2.0;
+        let top_window_collision =
+            WINDOW_HEIGHT / 2.0 < ball_transform.translation.y + ball_size.y / 2.0;
+        let bottom_window_collision =
+            -WINDOW_HEIGHT / 2.0 > ball_transform.translation.y - ball_size.y / 2.0;
+
+        if left_window_collision || right_window_collision {
+            ball_velocity.x = -ball_velocity.x;
+        }
+
+        if top_window_collision || bottom_window_collision {
+            ball_velocity.y = -ball_velocity.y;
+        }
+    }
+}
+
+fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
+    for (mut transform, velocity) in &mut query {
+        transform.translation.x += velocity.x * time_step.period.as_secs_f32();
+        transform.translation.y += velocity.y * time_step.period.as_secs_f32();
+    }
+}
+
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut scoreboard_query: Query<&mut Text, With<Scoreboard>>) {
+    let mut text = scoreboard_query.single_mut();
     text.sections[1].value = scoreboard.ball_count.to_string();
 }
