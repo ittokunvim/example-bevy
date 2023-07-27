@@ -1,5 +1,6 @@
 use bevy::{
     audio::Volume,
+    input::keyboard::KeyboardInput,
     prelude::*,
     sprite::collide_aabb::{collide, Collision},
 };
@@ -19,6 +20,9 @@ const OK_TIMING_RANGE: f32 = 150.0;
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 
+const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
+const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
+
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const SLIDER_DEFAULT_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
 const SLIDER_OK_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
@@ -26,24 +30,34 @@ const SLIDER_GOOD_COLOR: Color = Color::rgb(0.6, 0.6, 0.6);
 const SLIDER_PERFECT_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 const REFRECTOR_COLOR: Color = Color::rgb(0.4, 0.4, 0.4);
 const CUE_COLOR: Color = Color::rgb(0.4, 0.4, 0.4);
+const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
+enum AppState {
+    #[default]
+    MainMenu,
+    InGame,
+}
+
+#[derive(Resource, Component)]
+struct Scoreboard {
+    score: isize,
+}
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .insert_resource(Scoreboard { score: 0 })
         .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (
-                check_for_collisions,
-                apply_velocity,
-                decide_timing,
-                update_scoreboard,
-                bevy::window::close_on_esc,
-            ),
-        )
+        .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
+        .add_systems(Update, decide_timing.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, check_for_collisions.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
 
@@ -59,16 +73,30 @@ struct Velocity(Vec2);
 #[derive(Component)]
 struct Collider;
 
-#[derive(Default)]
-struct TimingEvent;
-
-#[derive(Resource)]
-struct Scoreboard {
-    score: isize,
-}
+#[derive(Component)]
+struct PressAnyKey;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
+
+    // Press any key
+    commands.spawn((
+        TextBundle::from_section(
+            "Press Any Key ...",
+            TextStyle {
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                font_size: PRESSANYKEY_FONT_SIZE,
+                color: PRESSANYKEY_COLOR,
+            },
+        )
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            bottom: PRESSANYKEY_TEXT_PADDING,
+            right: PRESSANYKEY_TEXT_PADDING,
+            ..default()
+        }),
+        PressAnyKey,
+    ));
 
     // Slider
     commands.spawn(SpriteBundle {
@@ -144,7 +172,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 
     // Scoreboard
-    commands.spawn(
+    commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
                 "Score: ",
@@ -155,12 +183,15 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ..default()
                 },
             ),
-            TextSection::from_style(TextStyle {
-                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-                font_size: SCOREBOARD_FONT_SIZE,
-                color: Color::GRAY,
-                ..default()
-            }),
+            TextSection::new(
+                "0",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: Color::GRAY,
+                    ..default()
+                },
+            ),
         ])
         .with_style(Style {
             position_type: PositionType::Absolute,
@@ -168,42 +199,23 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             left: SCOREBOARD_TEXT_PADDING,
             ..default()
         }),
-    );
+        Scoreboard { score: 0 },
+    ));
 }
 
-fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
-    for (mut transform, velocity) in &mut query {
-        transform.translation.x += velocity.x * time_step.period.as_secs_f32();
-    }
-}
-
-fn check_for_collisions(
-    mut cue_query: Query<(&mut Velocity, &Transform), With<Cue>>,
-    collider_query: Query<&Transform, With<Collider>>,
+fn press_any_key(
+    mut keyboard_event: EventReader<KeyboardInput>,
+    pressanykey_query: Query<Entity, With<PressAnyKey>>,
+    mut commands: Commands,
+    mut now_state: ResMut<State<AppState>>,
+    mut inkey: ResMut<Input<KeyCode>>,
 ) {
-    let (mut cue_velocity, cue_transform) = cue_query.single_mut();
+    for _event in keyboard_event.iter() {
+        let pressanykey_entity = pressanykey_query.single();
+        commands.entity(pressanykey_entity).despawn();
 
-    // check collision with reflectors
-    for transform in &collider_query {
-        let collision = collide(
-            cue_transform.translation,
-            CUE_SIZE,
-            transform.translation,
-            transform.scale.truncate(),
-        );
-
-        if let Some(collision) = collision {
-            let reflect_x = match collision {
-                Collision::Left => cue_velocity.x > 0.0,
-                Collision::Right => cue_velocity.x < 0.0,
-                _ => false,
-            };
-
-            // reflect velocity on the x-axis if we hit something on the x-axis
-            if reflect_x {
-                cue_velocity.x = -cue_velocity.x;
-            }
-        }
+        *now_state = State::new(AppState::InGame);
+        inkey.reset_all();
     }
 }
 
@@ -237,7 +249,46 @@ fn decide_timing(
     }
 }
 
-fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
-    let mut text = query.single_mut();
+fn check_for_collisions(
+    mut cue_query: Query<(&mut Velocity, &Transform), With<Cue>>,
+    collider_query: Query<&Transform, With<Collider>>,
+) {
+    let (mut cue_velocity, cue_transform) = cue_query.single_mut();
+
+    // check collision with reflectors
+    for transform in &collider_query {
+        let collision = collide(
+            cue_transform.translation,
+            CUE_SIZE,
+            transform.translation,
+            transform.scale.truncate(),
+        );
+
+        if let Some(collision) = collision {
+            let reflect_x = match collision {
+                Collision::Left => cue_velocity.x > 0.0,
+                Collision::Right => cue_velocity.x < 0.0,
+                _ => false,
+            };
+
+            // reflect velocity on the x-axis if we hit something on the x-axis
+            if reflect_x {
+                cue_velocity.x = -cue_velocity.x;
+            }
+        }
+    }
+}
+
+fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
+    for (mut transform, velocity) in &mut query {
+        transform.translation.x += velocity.x * time_step.period.as_secs_f32();
+    }
+}
+
+fn update_scoreboard(
+    scoreboard: Res<Scoreboard>,
+    mut scoreboard_query: Query<&mut Text, With<Scoreboard>>,
+) {
+    let mut text = scoreboard_query.single_mut();
     text.sections[1].value = scoreboard.score.to_string();
 }
