@@ -1,5 +1,4 @@
 use bevy::{
-    input::keyboard::KeyboardInput,
     prelude::*,
     sprite::{collide_aabb::collide, MaterialMesh2dBundle},
 };
@@ -30,15 +29,11 @@ const SCOREBOARD_SIZE: Vec2 = Vec2::new(
 const BULLET_SPEED: f32 = 800.0;
 const BULLET_SIZE: f32 = 5.0;
 
-const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
-const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
-
 const BACKGROUND_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
 const PLAYER_COLOR: Color = Color::rgb(0.3, 0.9, 0.3);
 const ENEMY_COLOR: Color = Color::rgb(0.9, 0.3, 0.3);
 const TEXT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
 const SCOREBOARD_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
-const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 
 fn main() {
     App::new()
@@ -49,7 +44,6 @@ fn main() {
             }),
             ..default()
         }))
-        .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .insert_resource(Scoreboard {
@@ -61,16 +55,16 @@ fn main() {
             TimerMode::Repeating,
         )))
         .add_systems(Startup, setup)
-        .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
-        .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, move_player.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, player_shoot.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, move_enemy.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, enemy_shoot.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, bullet_collision.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, remove_bullet.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, bevy::window::close_on_esc)
+        .add_systems(Update, apply_velocity)
+        .add_systems(Update, move_player)
+        .add_systems(Update, player_shoot)
+        .add_systems(Update, move_enemy)
+        .add_systems(Update, enemy_shoot)
+        .add_systems(Update, bullet_collision)
+        .add_systems(
+            Update,
+            (remove_bullet, update_scoreboard, bevy::window::close_on_esc),
+        )
         .run();
 }
 
@@ -92,10 +86,7 @@ struct Collider {
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
 
-#[derive(Component)]
-struct PressAnyKey;
-
-#[derive(Resource, Component)]
+#[derive(Resource)]
 struct Scoreboard {
     player_hp: f32,
     enemy_hp: f32,
@@ -103,13 +94,6 @@ struct Scoreboard {
 
 #[derive(Resource)]
 struct EnemyAttackTimer(Timer);
-
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
-enum AppState {
-    #[default]
-    MainMenu,
-    InGame,
-}
 
 fn setup(
     mut commands: Commands,
@@ -160,8 +144,8 @@ fn setup(
     ));
 
     // Scoreboard
-    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
-    let font_medium = asset_server.load("fonts/FiraMono-Medium.ttf");
+    let font_bold: Handle<Font> = asset_server.load("fonts/FiraSans-Bold.ttf");
+    let font_medium: Handle<Font> = asset_server.load("fonts/FiraMono-Medium.ttf");
     let text_closure = |font: Handle<Font>, text: String| -> TextSection {
         let style = TextStyle {
             font,
@@ -171,7 +155,7 @@ fn setup(
         TextSection::new(text, style)
     };
 
-    commands.spawn((
+    commands.spawn(
         TextBundle::from_sections([
             text_closure(font_bold.clone(), "Player: ".to_string()),
             text_closure(font_medium.clone(), PLAYER_HP.to_string()),
@@ -184,11 +168,7 @@ fn setup(
             left: Val::Px(SCOREBOARD_TEXT_PADDING),
             ..default()
         }),
-        Scoreboard {
-            player_hp: PLAYER_HP,
-            enemy_hp: ENEMY_HP,
-        },
-    ));
+    );
     // Scoreboard background
     commands.spawn(SpriteBundle {
         sprite: Sprite {
@@ -201,25 +181,6 @@ fn setup(
         ),
         ..default()
     });
-
-    // Press any key
-    commands.spawn((
-        TextBundle::from_section(
-            "Press Any Key ...",
-            TextStyle {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                font_size: PRESSANYKEY_FONT_SIZE,
-                color: PRESSANYKEY_COLOR,
-            },
-        )
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            bottom: PRESSANYKEY_TEXT_PADDING,
-            right: PRESSANYKEY_TEXT_PADDING,
-            ..default()
-        }),
-        PressAnyKey,
-    ));
 }
 
 fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
@@ -229,11 +190,8 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<
     }
 }
 
-fn update_scoreboard(
-    scoreboard: Res<Scoreboard>,
-    mut scoreboard_query: Query<&mut Text, With<Scoreboard>>,
-) {
-    let mut text = scoreboard_query.single_mut();
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
+    let mut text = query.single_mut();
     text.sections[1].value = scoreboard.player_hp.to_string();
     text.sections[3].value = scoreboard.enemy_hp.to_string();
 }
@@ -411,21 +369,5 @@ fn remove_bullet(mut commands: Commands, bullet_query: Query<(Entity, &Transform
         {
             commands.entity(bullet_entity).despawn();
         }
-    }
-}
-
-fn press_any_key(
-    mut keyboard_event: EventReader<KeyboardInput>,
-    pressanykey_query: Query<Entity, With<PressAnyKey>>,
-    mut commands: Commands,
-    mut now_state: ResMut<State<AppState>>,
-    mut inkey: ResMut<Input<KeyCode>>,
-) {
-    for _event in keyboard_event.iter() {
-        let pressanykey_entity = pressanykey_query.single();
-        commands.entity(pressanykey_entity).despawn();
-
-        *now_state = State::new(AppState::InGame);
-        inkey.reset_all();
     }
 }
