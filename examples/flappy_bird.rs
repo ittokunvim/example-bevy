@@ -1,4 +1,3 @@
-use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy::sprite::collide_aabb::collide;
 use bevy::sprite::MaterialMesh2dBundle;
@@ -18,27 +17,16 @@ const OBSTACLE_SPEED: f32 = 200.0;
 const SCOREBOARD_FONT_SIZE: f32 = 24.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 
-const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
-const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
-
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
 const OBSTACLE_COLOR: Color = Color::rgb(0.8, 0.1, 0.1);
 const TEXT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
 const SCOREBOARD_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
-const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
-
-#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
-enum AppState {
-    #[default]
-    MainMenu,
-    InGame,
-}
 
 #[derive(Resource)]
 struct ObstacleSpawnTimer(Timer);
 
-#[derive(Resource, Component)]
+#[derive(Resource)]
 struct Scoreboard {
     score: f32,
     life: usize,
@@ -53,7 +41,6 @@ fn main() {
             }),
             ..default()
         }))
-        .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .insert_resource(ObstacleSpawnTimer(Timer::from_seconds(
@@ -65,16 +52,15 @@ fn main() {
             life: PLAYER_LIFE,
         })
         .add_systems(Startup, setup)
-        .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
-        .add_systems(Update, jump_player.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, player_gravity.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, despawn_player.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, spawn_obstacles.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, despawn_obstacles.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, obstacle_collision.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, pass_obstacle.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, jump_player)
+        .add_systems(Update, player_gravity)
+        .add_systems(Update, despawn_player)
+        .add_systems(Update, spawn_obstacles)
+        .add_systems(Update, despawn_obstacles)
+        .add_systems(Update, obstacle_collision)
+        .add_systems(Update, pass_obstacle)
+        .add_systems(Update, apply_velocity)
+        .add_systems(Update, update_scoreboard)
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -93,9 +79,6 @@ struct Obstacle {
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec3);
-
-#[derive(Component)]
-struct PressAnyKey;
 
 fn setup(
     mut commands: Commands,
@@ -137,7 +120,7 @@ fn setup(
         TextSection::new(text, style)
     };
 
-    commands.spawn((
+    commands.spawn(
         TextBundle::from_sections([
             text_closure(font_bold.clone(), "Score: ", TEXT_COLOR),
             text_closure(font_medium.clone(), "", SCOREBOARD_COLOR),
@@ -150,30 +133,7 @@ fn setup(
             left: SCOREBOARD_TEXT_PADDING,
             ..default()
         }),
-        Scoreboard {
-            score: -1.0,
-            life: PLAYER_LIFE,
-        },
-    ));
-
-    // Press any key
-    commands.spawn((
-        TextBundle::from_section(
-            "Press Any Key ...",
-            TextStyle {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                font_size: PRESSANYKEY_FONT_SIZE,
-                color: PRESSANYKEY_COLOR,
-            },
-        )
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            bottom: PRESSANYKEY_TEXT_PADDING,
-            right: PRESSANYKEY_TEXT_PADDING,
-            ..default()
-        }),
-        PressAnyKey,
-    ));
+    );
 }
 
 fn jump_player(
@@ -305,27 +265,8 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<
     }
 }
 
-fn update_scoreboard(
-    scoreboard: Res<Scoreboard>,
-    mut scoreboard_query: Query<&mut Text, With<Scoreboard>>,
-) {
-    let mut text = scoreboard_query.single_mut();
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
+    let mut text = query.single_mut();
     text.sections[1].value = scoreboard.score.to_string();
     text.sections[3].value = scoreboard.life.to_string();
-}
-
-fn press_any_key(
-    mut keyboard_event: EventReader<KeyboardInput>,
-    pressanykey_query: Query<Entity, With<PressAnyKey>>,
-    mut commands: Commands,
-    mut now_state: ResMut<State<AppState>>,
-    mut inkey: ResMut<Input<KeyCode>>,
-) {
-    for _event in keyboard_event.iter() {
-        let pressanykey_entity = pressanykey_query.single();
-        commands.entity(pressanykey_entity).despawn();
-
-        *now_state = State::new(AppState::InGame);
-        inkey.reset_all();
-    }
 }
