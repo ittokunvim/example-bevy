@@ -1,5 +1,6 @@
 use std::f32::consts::PI;
 
+use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use rand::Rng;
 
@@ -16,25 +17,34 @@ const OBSTACLE_SIZE: f32 = 0.8;
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 
+const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
+const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
+
 const BACKGROUND_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
 const OBSTACLE_COLOR: Color = Color::rgb(0.8, 0.7, 0.6);
 const TEXT_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const SCORE_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
+const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .insert_resource(Scoreboard { score: 0 })
         .add_systems(Startup, setup)
-        .add_systems(Update, apply_velocity)
-        .add_systems(Update, check_for_collision)
-        .add_systems(Update, move_player)
-        .add_systems(Update, move_obstacle)
-        .add_systems(Update, focus_camera)
-        .add_systems(Update, goal_player)
-        .add_systems(Update, update_scoreboard)
+        .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
+        .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
+        .add_systems(
+            Update,
+            check_for_collision.run_if(in_state(AppState::InGame)),
+        )
+        .add_systems(Update, move_player.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, move_obstacle.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, focus_camera.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, goal_player.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -57,12 +67,22 @@ struct Obstacle {
     j: f32,
 }
 
+#[derive(Component)]
+struct PressAnyKey;
+
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec3);
 
-#[derive(Resource)]
+#[derive(Resource, Component)]
 struct Scoreboard {
     score: isize,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
+enum AppState {
+    #[default]
+    MainMenu,
+    InGame,
 }
 
 fn setup(
@@ -156,7 +176,7 @@ fn setup(
     let bold_font = asset_server.load("fonts/FiraSans-Bold.ttf");
     let medium_font = asset_server.load("fonts/FiraMono-Medium.ttf");
 
-    commands.spawn(
+    commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
                 "Score: ",
@@ -180,7 +200,27 @@ fn setup(
             left: SCOREBOARD_TEXT_PADDING,
             ..default()
         }),
-    );
+        Scoreboard { score: 0 },
+    ));
+
+    // Press any key
+    commands.spawn((
+        TextBundle::from_section(
+            "Press Any Key ...",
+            TextStyle {
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                font_size: PRESSANYKEY_FONT_SIZE,
+                color: PRESSANYKEY_COLOR,
+            },
+        )
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            bottom: PRESSANYKEY_TEXT_PADDING,
+            right: PRESSANYKEY_TEXT_PADDING,
+            ..default()
+        }),
+        PressAnyKey,
+    ));
 }
 
 fn apply_velocity(
@@ -221,8 +261,8 @@ fn check_for_collision(
     }
 }
 
-fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
-    let mut text = query.single_mut();
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut scoreboard_query: Query<&mut Text, With<Scoreboard>>) {
+    let mut text = scoreboard_query.single_mut();
     text.sections[1].value = scoreboard.score.to_string();
 }
 
@@ -323,5 +363,21 @@ fn goal_player(
         player.i = PLAYER_INITIAL_POSITION.x;
         player.j = PLAYER_INITIAL_POSITION.z;
         player_transform.translation = PLAYER_INITIAL_POSITION;
+    }
+}
+
+fn press_any_key(
+    mut keyboard_event: EventReader<KeyboardInput>,
+    pressanykey_query: Query<Entity, With<PressAnyKey>>,
+    mut commands: Commands,
+    mut now_state: ResMut<State<AppState>>,
+    mut inkey: ResMut<Input<KeyCode>>,
+) {
+    for _event in keyboard_event.iter() {
+        let pressanykey_entity = pressanykey_query.single();
+        commands.entity(pressanykey_entity).despawn();
+
+        *now_state = State::new(AppState::InGame);
+        inkey.reset_all();
     }
 }
