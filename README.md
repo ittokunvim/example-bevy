@@ -16,6 +16,14 @@
 cargo run --example timing_game
 ```
 
+以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
+
+```bash
+cargo make timing_game
+
+basic-http-server -a 0.0.0.0:4000 ./page
+```
+
 [ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/timing.rs)
 
 ### クリックゲーム
@@ -28,6 +36,14 @@ cargo run --example timing_game
 cargo run --example click_game
 ```
 
+以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
+
+```bash
+cargo make click_game
+
+basic-http-server -a 0.0.0.0:4000 ./page
+```
+
 [ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/click.rs)
 
 ### 2Dシューティングゲーム
@@ -38,6 +54,13 @@ cargo run --example click_game
 
 ```bash
 cargo run --example 2d_shooting
+```
+以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
+
+```bash
+cargo make 2d_shooting
+
+basic-http-server -a 0.0.0.0:4000 ./page
 ```
 
 [ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/2d_shooting.rs)
@@ -52,6 +75,14 @@ cargo run --example 2d_shooting
 cargo run --example frogger
 ```
 
+以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
+
+```bash
+cargo make frogger
+
+basic-http-server -a 0.0.0.0:4000 ./page
+```
+
 [ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/frogger_game.rs)
 
 ### フラッピーバード
@@ -62,6 +93,14 @@ cargo run --example frogger
 
 ```bash
 cargo run --example flappy_bird
+```
+
+以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
+
+```bash
+cargo make flappy_bird
+
+basic-http-server -a 0.0.0.0:4000 ./page
 ```
 
 [ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/flappy_bird.rs)
