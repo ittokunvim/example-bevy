@@ -1,8 +1,11 @@
 use bevy::prelude::*;
+use bevy::sprite::MaterialMesh2dBundle;
 
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
-
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+
+const PLAYER_SIZE: Vec3 = Vec3::new(25.0, 25.0, 0.0);
+const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
@@ -29,7 +32,25 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
     // Camera
     commands.spawn(Camera2dBundle::default());
+
+    // Player
+    let player_y = -WINDOW_SIZE.y / 2.0 + PLAYER_SIZE.y;
+
+    commands.spawn(MaterialMesh2dBundle {
+        mesh: meshes.add(shape::RegularPolygon::new(1.0, 4).into()).into(),
+        material: materials.add(ColorMaterial::from(PLAYER_COLOR)),
+        transform: Transform {
+            translation: Vec3::new(0.0, player_y, 0.0),
+            scale: PLAYER_SIZE,
+            ..default()
+        },
+        ..default()
+    });
 }
