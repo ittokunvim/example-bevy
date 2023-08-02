@@ -11,6 +11,7 @@ const PRESSANYKEY_TEXT_PADDING: f32 = 20.0;
 
 const PLAYER_SIZE: Vec3 = Vec3::new(25.0, 25.0, 0.0);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
+const PLAYER_SPEED: f32 = 200.0;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
@@ -34,12 +35,16 @@ fn main() {
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_systems(Startup, setup)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
+        .add_systems(Update, move_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
 
 #[derive(Component)]
 struct PressAnyKey;
+
+#[derive(Component)]
+struct Player;
 
 fn setup(
     mut commands: Commands,
@@ -72,16 +77,19 @@ fn setup(
     // Player
     let player_y = -WINDOW_SIZE.y / 2.0 + PLAYER_SIZE.y;
 
-    commands.spawn(MaterialMesh2dBundle {
-        mesh: meshes.add(shape::RegularPolygon::new(1.0, 4).into()).into(),
-        material: materials.add(ColorMaterial::from(PLAYER_COLOR)),
-        transform: Transform {
-            translation: Vec3::new(0.0, player_y, 0.0),
-            scale: PLAYER_SIZE,
+    commands.spawn((
+        MaterialMesh2dBundle {
+            mesh: meshes.add(shape::RegularPolygon::new(1.0, 4).into()).into(),
+            material: materials.add(ColorMaterial::from(PLAYER_COLOR)),
+            transform: Transform {
+                translation: Vec3::new(0.0, player_y, 0.0),
+                scale: PLAYER_SIZE,
+                ..default()
+            },
             ..default()
         },
-        ..default()
-    });
+        Player,
+    ));
 }
 
 fn press_any_key(
@@ -98,4 +106,29 @@ fn press_any_key(
         *now_state = State::new(AppState::InGame);
         inkey.reset_all();
     }
+}
+
+fn move_player(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut player_query: Query<&mut Transform, With<Player>>,
+    time_step: Res<FixedTime>,
+) {
+    let mut player_transform = player_query.single_mut();
+    let mut direction = Vec2::ZERO;
+
+    // Keyboard input
+    if keyboard_input.any_pressed([KeyCode::Left, KeyCode::A]) {
+        direction.x -= 1.0;
+    }
+    if keyboard_input.any_pressed([KeyCode::Right, KeyCode::D]) {
+        direction.x += 1.0;
+    }
+
+    // Player x movement
+    let new_player_position_x = player_transform.translation.x
+        + direction.x * PLAYER_SPEED * time_step.period.as_secs_f32();
+    let left_bound = -WINDOW_SIZE.x / 2.0 + PLAYER_SIZE.x;
+    let right_bound = WINDOW_SIZE.x / 2.0 - PLAYER_SIZE.x;
+
+    player_transform.translation.x = new_player_position_x.clamp(left_bound, right_bound);
 }
