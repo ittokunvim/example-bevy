@@ -2,6 +2,8 @@ use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy::sprite::MaterialMesh2dBundle;
 
+use rand::Rng;
+
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 
@@ -13,6 +15,10 @@ const PLAYER_SIZE: Vec3 = Vec3::new(25.0, 25.0, 0.0);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
 const PLAYER_SPEED: f32 = 200.0;
 
+const OBSTACLE_SPAWN_INTERVAL: f32 = 0.5;
+const OBSTACLE_SIZE: Vec3 = Vec3::new(20.0, 20.0, 0.0);
+const OBSTACLE_COLOR: Color = Color::rgb(0.8, 0.1, 0.1);
+
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
     #[default]
@@ -20,6 +26,9 @@ enum AppState {
     InGame,
     GameOver,
 }
+
+#[derive(Resource)]
+struct ObstacleSpawnTimer(Timer);
 
 fn main() {
     App::new()
@@ -33,9 +42,14 @@ fn main() {
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(ObstacleSpawnTimer(Timer::from_seconds(
+            OBSTACLE_SPAWN_INTERVAL,
+            TimerMode::Repeating,
+        )))
         .add_systems(Startup, setup)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
         .add_systems(Update, move_player.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, spawn_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -127,8 +141,32 @@ fn move_player(
     // Player x movement
     let new_player_position_x = player_transform.translation.x
         + direction.x * PLAYER_SPEED * time_step.period.as_secs_f32();
-    let left_bound = -WINDOW_SIZE.x / 2.0 + PLAYER_SIZE.x;
-    let right_bound = WINDOW_SIZE.x / 2.0 - PLAYER_SIZE.x;
+    let x_bound = WINDOW_SIZE.x / 2.0 - PLAYER_SIZE.x;
 
-    player_transform.translation.x = new_player_position_x.clamp(left_bound, right_bound);
+    player_transform.translation.x = new_player_position_x.clamp(-x_bound, x_bound);
+}
+
+fn spawn_obstacle(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    time: Res<Time>,
+    mut timer: ResMut<ObstacleSpawnTimer>,
+) {
+    if timer.0.tick(time.delta()).just_finished() {
+        // Obstacle
+        let x_bound = WINDOW_SIZE.x / 2.0 - OBSTACLE_SIZE.x;
+        let obstacle_x = rand::thread_rng().gen_range(-x_bound..x_bound);
+
+        commands.spawn(MaterialMesh2dBundle {
+            mesh: meshes.add(shape::Circle::new(1.0).into()).into(),
+            material: materials.add(ColorMaterial::from(OBSTACLE_COLOR)),
+            transform: Transform {
+                translation: Vec3::new(obstacle_x, 0.0, 0.0),
+                scale: OBSTACLE_SIZE,
+                ..default()
+            },
+            ..default()
+        });
+    }
 }
