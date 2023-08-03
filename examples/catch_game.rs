@@ -52,6 +52,7 @@ fn main() {
         .add_systems(Update, move_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, spawn_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, move_obstacle.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, cleanup_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -183,5 +184,23 @@ fn spawn_obstacle(
 fn move_obstacle(mut obstacle_query: Query<&mut Transform, With<Obstacle>>) {
     for mut obstacle_transform in obstacle_query.iter_mut() {
         obstacle_transform.translation.y -= OBSTACLE_SPEED;
+    }
+}
+
+fn cleanup_obstacle(
+    mut commands: Commands,
+    obstacle_query: Query<(Entity, &Transform), With<Obstacle>>,
+) {
+    for (obstacle_entity, obstacle_transform) in obstacle_query.iter() {
+        let obstacle_pos = obstacle_transform.translation;
+        let window_half_size = WINDOW_SIZE / 2.0 + OBSTACLE_SIZE.truncate();
+
+        if obstacle_pos.x < -window_half_size.x
+            || obstacle_pos.x > window_half_size.x
+            || obstacle_pos.y < -window_half_size.y
+            || obstacle_pos.y > window_half_size.y
+        {
+            commands.entity(obstacle_entity).despawn();
+        }
     }
 }
