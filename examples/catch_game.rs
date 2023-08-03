@@ -18,6 +18,7 @@ const PLAYER_SPEED: f32 = 200.0;
 const OBSTACLE_SPAWN_INTERVAL: f32 = 0.5;
 const OBSTACLE_SIZE: Vec3 = Vec3::new(20.0, 20.0, 0.0);
 const OBSTACLE_COLOR: Color = Color::rgb(0.8, 0.1, 0.1);
+const OBSTACLE_SPEED: f32 = 2.5;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
@@ -50,6 +51,7 @@ fn main() {
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
         .add_systems(Update, move_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, spawn_obstacle.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, move_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -59,6 +61,9 @@ struct PressAnyKey;
 
 #[derive(Component)]
 struct Player;
+
+#[derive(Component)]
+struct Obstacle;
 
 fn setup(
     mut commands: Commands,
@@ -96,7 +101,7 @@ fn setup(
             mesh: meshes.add(shape::RegularPolygon::new(1.0, 4).into()).into(),
             material: materials.add(ColorMaterial::from(PLAYER_COLOR)),
             transform: Transform {
-                translation: Vec3::new(0.0, player_y, 0.0),
+                translation: Vec3::new(0.0, player_y, 1.0),
                 scale: PLAYER_SIZE,
                 ..default()
             },
@@ -157,16 +162,26 @@ fn spawn_obstacle(
         // Obstacle
         let x_bound = WINDOW_SIZE.x / 2.0 - OBSTACLE_SIZE.x;
         let obstacle_x = rand::thread_rng().gen_range(-x_bound..x_bound);
+        let obstacle_y = WINDOW_SIZE.y / 2.0 + OBSTACLE_SIZE.y;
 
-        commands.spawn(MaterialMesh2dBundle {
-            mesh: meshes.add(shape::Circle::new(1.0).into()).into(),
-            material: materials.add(ColorMaterial::from(OBSTACLE_COLOR)),
-            transform: Transform {
-                translation: Vec3::new(obstacle_x, 0.0, 0.0),
-                scale: OBSTACLE_SIZE,
+        commands.spawn((
+            MaterialMesh2dBundle {
+                mesh: meshes.add(shape::Circle::new(1.0).into()).into(),
+                material: materials.add(ColorMaterial::from(OBSTACLE_COLOR)),
+                transform: Transform {
+                    translation: Vec3::new(obstacle_x, obstacle_y, 0.0),
+                    scale: OBSTACLE_SIZE,
+                    ..default()
+                },
                 ..default()
             },
-            ..default()
-        });
+            Obstacle,
+        ));
+    }
+}
+
+fn move_obstacle(mut obstacle_query: Query<&mut Transform, With<Obstacle>>) {
+    for mut obstacle_transform in obstacle_query.iter_mut() {
+        obstacle_transform.translation.y -= OBSTACLE_SPEED;
     }
 }
