@@ -1,5 +1,6 @@
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
+use bevy::sprite::collide_aabb::collide;
 use bevy::sprite::MaterialMesh2dBundle;
 
 use rand::Rng;
@@ -52,6 +53,7 @@ fn main() {
         .add_systems(Update, move_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, spawn_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, move_obstacle.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, collide_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, cleanup_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
@@ -184,6 +186,29 @@ fn spawn_obstacle(
 fn move_obstacle(mut obstacle_query: Query<&mut Transform, With<Obstacle>>) {
     for mut obstacle_transform in obstacle_query.iter_mut() {
         obstacle_transform.translation.y -= OBSTACLE_SPEED;
+    }
+}
+
+fn collide_obstacle(
+    mut commands: Commands,
+    player_query: Query<&Transform, With<Player>>,
+    obstacle_query: Query<(Entity, &Transform), With<Obstacle>>,
+) {
+    let player = player_query.single();
+    let player_size = player.scale.truncate();
+
+    for (obstacle_entity, obstacle_transform) in obstacle_query.iter() {
+        let obstacle_size = obstacle_transform.scale.truncate();
+        let collision = collide(
+            player.translation,
+            player_size,
+            obstacle_transform.translation,
+            obstacle_size,
+        );
+
+        if let Some(..) = collision {
+            commands.entity(obstacle_entity).despawn();
+        }
     }
 }
 
