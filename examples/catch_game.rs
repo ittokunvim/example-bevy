@@ -18,7 +18,8 @@ const PLAYER_SPEED: f32 = 200.0;
 
 const OBSTACLE_SPAWN_INTERVAL: f32 = 0.5;
 const OBSTACLE_SIZE: Vec3 = Vec3::new(20.0, 20.0, 0.0);
-const OBSTACLE_COLOR: Color = Color::rgb(0.8, 0.1, 0.1);
+const OBSTACLE_GOOD_COLOR: Color = Color::rgb(0.1, 0.1, 0.8);
+const OBSTACLE_BAD_COLOR: Color = Color::rgb(0.8, 0.1, 0.1);
 const OBSTACLE_SPEED: f32 = 2.5;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
@@ -66,7 +67,9 @@ struct PressAnyKey;
 struct Player;
 
 #[derive(Component)]
-struct Obstacle;
+struct Obstacle {
+    point: i32,
+}
 
 fn setup(
     mut commands: Commands,
@@ -166,11 +169,14 @@ fn spawn_obstacle(
         let x_bound = WINDOW_SIZE.x / 2.0 - OBSTACLE_SIZE.x;
         let obstacle_x = rand::thread_rng().gen_range(-x_bound..x_bound);
         let obstacle_y = WINDOW_SIZE.y / 2.0 + OBSTACLE_SIZE.y;
+        let bool_obstacle = rand::thread_rng().gen_bool(1.0 / 2.0);
+        let obstacle_color = if bool_obstacle { OBSTACLE_GOOD_COLOR } else { OBSTACLE_BAD_COLOR };
+        let obstacle_point = if bool_obstacle { 1 } else { -1 };
 
         commands.spawn((
             MaterialMesh2dBundle {
                 mesh: meshes.add(shape::Circle::new(1.0).into()).into(),
-                material: materials.add(ColorMaterial::from(OBSTACLE_COLOR)),
+                material: materials.add(ColorMaterial::from(obstacle_color)),
                 transform: Transform {
                     translation: Vec3::new(obstacle_x, obstacle_y, 0.0),
                     scale: OBSTACLE_SIZE,
@@ -178,7 +184,7 @@ fn spawn_obstacle(
                 },
                 ..default()
             },
-            Obstacle,
+            Obstacle { point: obstacle_point },
         ));
     }
 }
@@ -192,12 +198,12 @@ fn move_obstacle(mut obstacle_query: Query<&mut Transform, With<Obstacle>>) {
 fn collide_obstacle(
     mut commands: Commands,
     player_query: Query<&Transform, With<Player>>,
-    obstacle_query: Query<(Entity, &Transform), With<Obstacle>>,
+    obstacle_query: Query<(&Obstacle, Entity, &Transform), With<Obstacle>>,
 ) {
     let player = player_query.single();
     let player_size = player.scale.truncate();
 
-    for (obstacle_entity, obstacle_transform) in obstacle_query.iter() {
+    for (obstacle, obstacle_entity, obstacle_transform) in obstacle_query.iter() {
         let obstacle_size = obstacle_transform.scale.truncate();
         let collision = collide(
             player.translation,
