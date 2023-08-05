@@ -104,3 +104,23 @@ basic-http-server -a 0.0.0.0:4000 ./page
 ```
 
 [ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/flappy_bird.rs)
+
+### キャッチゲーム
+
+一般的にボールや他のオブジェクトを捕まえたり、キャッチしたりする能力や技術を試すゲーム。
+
+以下のコマンドを実行することで、ゲームを開始します。
+
+```bash
+cargo run --example catch_game
+```
+
+以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
+
+```bash
+cargo make catch_game
+
+basic-http-server -a 0.0.0.0:4000 ./page
+```
+
+[ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/catch_game.rs)

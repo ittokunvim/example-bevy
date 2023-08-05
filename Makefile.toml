@@ -67,3 +67,17 @@ dependencies = [
 	"build_release_flappy_bird",
 	"build_wasm_flappy_bird",
 ]
+
+[tasks.build_release_catch_game]
+command = "cargo"
+args = ["build", "--release", "--target", "wasm32-unknown-unknown", "--example", "catch_game"]
+
+[tasks.build_wasm_catch_game]
+command = "wasm-bindgen"
+args = ["--target", "web", "--out-dir", "./page", "target/wasm32-unknown-unknown/release/examples/catch_game.wasm"]
+
+[tasks.catch_game]
+dependencies = [
+	"build_release_catch_game",
+	"build_wasm_catch_game",
+]
