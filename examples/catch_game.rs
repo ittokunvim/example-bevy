@@ -22,6 +22,10 @@ const OBSTACLE_GOOD_COLOR: Color = Color::rgb(0.1, 0.1, 0.8);
 const OBSTACLE_BAD_COLOR: Color = Color::rgb(0.8, 0.1, 0.1);
 const OBSTACLE_SPEED: f32 = 2.5;
 
+const SCOREBOARD_FONT_SIZE: f32 = 30.0;
+const SCOREBOARD_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
+const SCOREBOARD_TEXT_PADDING: f32 = 5.0;
+
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
     #[default]
@@ -32,6 +36,11 @@ enum AppState {
 
 #[derive(Resource)]
 struct ObstacleSpawnTimer(Timer);
+
+#[derive(Resource, Component)]
+struct Scoreboard {
+    score: i32,
+}
 
 fn main() {
     App::new()
@@ -49,6 +58,7 @@ fn main() {
             OBSTACLE_SPAWN_INTERVAL,
             TimerMode::Repeating,
         )))
+        .insert_resource(Scoreboard { score: 0 })
         .add_systems(Startup, setup)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
         .add_systems(Update, move_player.run_if(in_state(AppState::InGame)))
@@ -56,6 +66,7 @@ fn main() {
         .add_systems(Update, move_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, collide_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, cleanup_obstacle.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -81,11 +92,13 @@ fn setup(
     commands.spawn(Camera2dBundle::default());
 
     // Press any key
+    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
+
     commands.spawn((
         TextBundle::from_section(
             "Press Any Key ...",
             TextStyle {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                font: font_bold,
                 font_size: PRESSANYKEY_FONT_SIZE,
                 color: PRESSANYKEY_COLOR,
             },
@@ -114,6 +127,38 @@ fn setup(
             ..default()
         },
         Player,
+    ));
+
+    // Scoreboard
+    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
+    let font_medium = asset_server.load("fonts/FiraMono-Medium.ttf");
+
+    commands.spawn((
+        TextBundle::from_sections([
+            TextSection::new(
+                "Score: ",
+                TextStyle {
+                    font: font_bold,
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: SCOREBOARD_COLOR,
+                },
+            ),
+            TextSection::new(
+                "",
+                TextStyle {
+                    font: font_medium,
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: SCOREBOARD_COLOR,
+                },
+            ),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(SCOREBOARD_TEXT_PADDING),
+            left: Val::Px(SCOREBOARD_TEXT_PADDING),
+            ..default()
+        }),
+        Scoreboard { score: 0 },
     ));
 }
 
@@ -199,6 +244,7 @@ fn collide_obstacle(
     mut commands: Commands,
     player_query: Query<&Transform, With<Player>>,
     obstacle_query: Query<(&Obstacle, Entity, &Transform), With<Obstacle>>,
+    mut scoreboard: ResMut<Scoreboard>,
 ) {
     let player = player_query.single();
     let player_size = player.scale.truncate();
@@ -213,6 +259,7 @@ fn collide_obstacle(
         );
 
         if let Some(..) = collision {
+            scoreboard.score += obstacle.point;
             commands.entity(obstacle_entity).despawn();
         }
     }
@@ -234,4 +281,12 @@ fn cleanup_obstacle(
             commands.entity(obstacle_entity).despawn();
         }
     }
+}
+
+fn update_scoreboard(
+    scoreboard: Res<Scoreboard>,
+    mut scoreboard_query: Query<&mut Text, With<Scoreboard>>,
+) {
+    let mut scoreboard_text = scoreboard_query.single_mut();
+    scoreboard_text.sections[1].value = scoreboard.score.to_string();
 }
