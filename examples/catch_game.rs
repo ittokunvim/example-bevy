@@ -59,14 +59,17 @@ fn main() {
             TimerMode::Repeating,
         )))
         .insert_resource(Scoreboard { score: 0 })
-        .add_systems(Startup, setup)
+        .add_systems(Startup, setup_camera)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
+        .add_systems(OnEnter(AppState::InGame), setup)
         .add_systems(Update, move_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, spawn_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, move_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, collide_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, cleanup_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
+        .add_systems(OnExit(AppState::InGame), teardown)
+        .add_systems(Update, press_any_key.run_if(in_state(AppState::GameOver)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -82,36 +85,17 @@ struct Obstacle {
     point: i32,
 }
 
+fn setup_camera(mut commands: Commands) {
+    // Camera
+    commands.spawn(Camera2dBundle::default());
+}
+
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-    // Camera
-    commands.spawn(Camera2dBundle::default());
-
-    // Press any key
-    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
-
-    commands.spawn((
-        TextBundle::from_section(
-            "Press Any Key ...",
-            TextStyle {
-                font: font_bold,
-                font_size: PRESSANYKEY_FONT_SIZE,
-                color: PRESSANYKEY_COLOR,
-            },
-        )
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(PRESSANYKEY_TEXT_PADDING),
-            right: Val::Px(PRESSANYKEY_TEXT_PADDING),
-            ..default()
-        }),
-        PressAnyKey,
-    ));
-
     // Player
     let player_y = -WINDOW_SIZE.y / 2.0 + PLAYER_SIZE.y;
 
@@ -163,17 +147,41 @@ fn setup(
 }
 
 fn press_any_key(
+    asset_server: Res<AssetServer>,
     mut keyboard_event: EventReader<KeyboardInput>,
     pressanykey_query: Query<Entity, With<PressAnyKey>>,
     mut commands: Commands,
-    mut now_state: ResMut<State<AppState>>,
+    mut app_state: ResMut<NextState<AppState>>,
     mut inkey: ResMut<Input<KeyCode>>,
 ) {
+    if pressanykey_query.is_empty() {
+        // Press any key
+        let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
+
+        commands.spawn((
+            TextBundle::from_section(
+                "Press Any Key ...",
+                TextStyle {
+                    font: font_bold,
+                    font_size: PRESSANYKEY_FONT_SIZE,
+                    color: PRESSANYKEY_COLOR,
+                },
+            )
+            .with_style(Style {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(PRESSANYKEY_TEXT_PADDING),
+                right: Val::Px(PRESSANYKEY_TEXT_PADDING),
+                ..default()
+            }),
+            PressAnyKey,
+        ));
+    }
+
     for _event in keyboard_event.iter() {
         let pressanykey_entity = pressanykey_query.single();
         commands.entity(pressanykey_entity).despawn();
 
-        *now_state = State::new(AppState::InGame);
+        app_state.set(AppState::InGame);
         inkey.reset_all();
     }
 }
@@ -245,6 +253,7 @@ fn collide_obstacle(
     player_query: Query<&Transform, With<Player>>,
     obstacle_query: Query<(&Obstacle, Entity, &Transform), With<Obstacle>>,
     mut scoreboard: ResMut<Scoreboard>,
+    mut app_state: ResMut<NextState<AppState>>,
 ) {
     let player = player_query.single();
     let player_size = player.scale.truncate();
@@ -261,6 +270,9 @@ fn collide_obstacle(
         if let Some(..) = collision {
             scoreboard.score += obstacle.point;
             commands.entity(obstacle_entity).despawn();
+            if scoreboard.score < 0 {
+                app_state.set(AppState::GameOver);
+            }
         }
     }
 }
@@ -289,4 +301,16 @@ fn update_scoreboard(
 ) {
     let mut scoreboard_text = scoreboard_query.single_mut();
     scoreboard_text.sections[1].value = scoreboard.score.to_string();
+}
+
+fn teardown(
+    mut commands: Commands,
+    entities: Query<Entity, (Without<Camera>, Without<Window>)>,
+    mut scoreboard: ResMut<Scoreboard>,
+) {
+    scoreboard.score = 0;
+
+    for entity in &entities {
+        commands.entity(entity).despawn();
+    }
 }
