@@ -7,6 +7,7 @@ use rand::Rng;
 
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+const GAME_TIME_LIMIT: f32 = 60.0;
 
 const PRESSANYKEY_FONT_SIZE: f32 = 30.0;
 const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
@@ -35,10 +36,14 @@ enum AppState {
 }
 
 #[derive(Resource)]
+struct GameTimer(Timer);
+
+#[derive(Resource)]
 struct ObstacleSpawnTimer(Timer);
 
 #[derive(Resource, Component)]
 struct Scoreboard {
+    time: f32,
     score: i32,
 }
 
@@ -54,11 +59,18 @@ fn main() {
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(GameTimer(Timer::from_seconds(
+            GAME_TIME_LIMIT,
+            TimerMode::Once,
+        )))
         .insert_resource(ObstacleSpawnTimer(Timer::from_seconds(
             OBSTACLE_SPAWN_INTERVAL,
             TimerMode::Repeating,
         )))
-        .insert_resource(Scoreboard { score: 0 })
+        .insert_resource(Scoreboard {
+            time: GAME_TIME_LIMIT,
+            score: 0,
+        })
         .add_systems(Startup, setup_camera)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
         .add_systems(OnEnter(AppState::InGame), setup)
@@ -67,6 +79,7 @@ fn main() {
         .add_systems(Update, move_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, collide_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, cleanup_obstacle.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, update_game_timer.run_if(in_state(AppState::InGame)))
         .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
         .add_systems(OnExit(AppState::InGame), teardown)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::GameOver)))
@@ -120,9 +133,25 @@ fn setup(
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
-                "Score: ",
+                "Time: ",
                 TextStyle {
-                    font: font_bold,
+                    font: font_bold.clone(),
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: SCOREBOARD_COLOR,
+                },
+            ),
+            TextSection::new(
+                GAME_TIME_LIMIT.to_string(),
+                TextStyle {
+                    font: font_medium.clone(),
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: SCOREBOARD_COLOR,
+                },
+            ),
+            TextSection::new(
+                " | Score: ",
+                TextStyle {
+                    font: font_bold.clone(),
                     font_size: SCOREBOARD_FONT_SIZE,
                     color: SCOREBOARD_COLOR,
                 },
@@ -130,7 +159,7 @@ fn setup(
             TextSection::new(
                 "",
                 TextStyle {
-                    font: font_medium,
+                    font: font_medium.clone(),
                     font_size: SCOREBOARD_FONT_SIZE,
                     color: SCOREBOARD_COLOR,
                 },
@@ -142,7 +171,10 @@ fn setup(
             left: Val::Px(SCOREBOARD_TEXT_PADDING),
             ..default()
         }),
-        Scoreboard { score: 0 },
+        Scoreboard {
+            time: GAME_TIME_LIMIT,
+            score: 0,
+        },
     ));
 }
 
@@ -178,11 +210,12 @@ fn press_any_key(
     }
 
     for _event in keyboard_event.iter() {
-        let pressanykey_entity = pressanykey_query.single();
-        commands.entity(pressanykey_entity).despawn();
+        if let Ok(pressanykey_entity) = pressanykey_query.get_single() {
+            commands.entity(pressanykey_entity).despawn();
 
-        app_state.set(AppState::InGame);
-        inkey.reset_all();
+            app_state.set(AppState::InGame);
+            inkey.reset_all();
+        }
     }
 }
 
@@ -253,7 +286,6 @@ fn collide_obstacle(
     player_query: Query<&Transform, With<Player>>,
     obstacle_query: Query<(&Obstacle, Entity, &Transform), With<Obstacle>>,
     mut scoreboard: ResMut<Scoreboard>,
-    mut app_state: ResMut<NextState<AppState>>,
 ) {
     let player = player_query.single();
     let player_size = player.scale.truncate();
@@ -270,9 +302,6 @@ fn collide_obstacle(
         if let Some(..) = collision {
             scoreboard.score += obstacle.point;
             commands.entity(obstacle_entity).despawn();
-            if scoreboard.score < 0 {
-                app_state.set(AppState::GameOver);
-            }
         }
     }
 }
@@ -295,12 +324,27 @@ fn cleanup_obstacle(
     }
 }
 
+fn update_game_timer(
+    mut scoreboard: ResMut<Scoreboard>,
+    time: Res<Time>,
+    mut timer: ResMut<GameTimer>,
+    mut app_state: ResMut<NextState<AppState>>,
+) {
+    scoreboard.time = timer.0.remaining_secs().round();
+
+    if timer.0.tick(time.delta()).just_finished() {
+        timer.0.reset();
+        app_state.set(AppState::GameOver);
+    }
+}
+
 fn update_scoreboard(
     scoreboard: Res<Scoreboard>,
     mut scoreboard_query: Query<&mut Text, With<Scoreboard>>,
 ) {
     let mut scoreboard_text = scoreboard_query.single_mut();
-    scoreboard_text.sections[1].value = scoreboard.score.to_string();
+    scoreboard_text.sections[1].value = scoreboard.time.to_string();
+    scoreboard_text.sections[3].value = scoreboard.score.to_string();
 }
 
 fn teardown(
