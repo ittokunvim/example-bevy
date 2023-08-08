@@ -27,6 +27,11 @@ const SCOREBOARD_FONT_SIZE: f32 = 30.0;
 const SCOREBOARD_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
 const SCOREBOARD_TEXT_PADDING: f32 = 5.0;
 
+const RESULT_TEXT_PADDING: f32 = 50.0;
+const RESULT_BACKGROUND_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
+const RESULT_FONT_SIZE: f32 = 50.0;
+const RESULT_FONT_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
     #[default]
@@ -81,8 +86,9 @@ fn main() {
         .add_systems(Update, cleanup_obstacle.run_if(in_state(AppState::InGame)))
         .add_systems(Update, update_game_timer.run_if(in_state(AppState::InGame)))
         .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
-        .add_systems(OnExit(AppState::InGame), teardown)
+        .add_systems(OnEnter(AppState::GameOver), display_result.run_if(in_state(AppState::GameOver)))
         .add_systems(Update, press_any_key.run_if(in_state(AppState::GameOver)))
+        .add_systems(OnExit(AppState::GameOver), teardown)
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -357,4 +363,58 @@ fn teardown(
     for entity in &entities {
         commands.entity(entity).despawn();
     }
+}
+
+fn display_result(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    scoreboard: Res<Scoreboard>,
+) {
+    // Result
+    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
+    let font_medium = asset_server.load("fonts/FiraMono-Medium.ttf");
+
+    let result_parent = NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        ..default()
+    };
+    let result_background = NodeBundle {
+        style: Style {
+            padding: UiRect::all(Val::Px(RESULT_TEXT_PADDING)),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        background_color: RESULT_BACKGROUND_COLOR.into(),
+        ..default()
+    };
+    let result_text = TextBundle::from_sections([
+        TextSection::new(
+            "Score: ",
+            TextStyle {
+                font: font_bold.clone(),
+                font_size: RESULT_FONT_SIZE,
+                color: RESULT_FONT_COLOR,
+            },
+        ),
+        TextSection::new(
+            scoreboard.score.to_string(),
+            TextStyle {
+                font: font_medium.clone(),
+                font_size: RESULT_FONT_SIZE,
+                color: RESULT_FONT_COLOR,
+            },
+        )
+    ]);
+
+    commands.spawn(result_parent).with_children(|parent| {
+        parent.spawn(result_background).with_children(|parent| {
+            parent.spawn(result_text);
+        });
+    });
 }
