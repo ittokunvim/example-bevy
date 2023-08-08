@@ -7,7 +7,7 @@ use rand::Rng;
 
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
-const GAME_TIME_LIMIT: f32 = 60.0;
+const GAME_TIME_LIMIT: f32 = 30.0;
 
 const PRESSANYKEY_FONT_SIZE: f32 = 30.0;
 const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
