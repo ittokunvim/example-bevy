@@ -11,6 +11,7 @@ const TILE_COLOR: Color = Color::rgb(0.5, 0.3, 0.2);
 
 const PLAYER_SIZE: Vec3 = Vec3::new(25.0, 25.0, 0.0);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
+const PLAYER_SPEED: f32 = 100.0;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
@@ -35,6 +36,7 @@ fn main() {
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, setup_tilemap)
         .add_systems(Startup, setup_player)
+        .add_systems(Update, apply_velocity)
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -49,6 +51,9 @@ struct TileGround;
 
 #[derive(Component)]
 struct Player;
+
+#[derive(Component, Deref, DerefMut)]
+struct Velocity(Vec3);
 
 fn setup_camera(mut commands: Commands) {
     // Camera
@@ -105,5 +110,12 @@ fn setup_player(
             ..default()
         },
         Player,
+        Velocity(Vec3::new(PLAYER_SPEED, 0.0, 0.0)),
     ));
+}
+
+fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
+    for (mut transform, velocity) in &mut query {
+        transform.translation.x += velocity.x * time_step.period.as_secs_f32();
+    }
 }
