@@ -12,6 +12,7 @@ const TILE_COLOR: Color = Color::rgb(0.5, 0.3, 0.2);
 const PLAYER_SIZE: Vec3 = Vec3::new(25.0, 25.0, 0.0);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
 const PLAYER_SPEED: f32 = 100.0;
+const PLAYER_GRAVITY: f32 = 3.0;
 
 const CAMERA_FOCUS_OFFSET: f32 = -200.0;
 
@@ -40,6 +41,7 @@ fn main() {
         .add_systems(Startup, setup_player)
         .add_systems(Update, apply_velocity)
         .add_systems(Update, focus_camera_on_player)
+        .add_systems(Update, player_gravity)
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -59,7 +61,6 @@ struct Player;
 struct Velocity(Vec3);
 
 fn setup_camera(mut commands: Commands) {
-    // Camera
     commands.spawn(Camera2dBundle::default());
 }
 
@@ -132,5 +133,11 @@ fn focus_camera_on_player(
 
     if player_transform.translation.x > CAMERA_FOCUS_OFFSET {
         camera_transform.translation.x = player_transform.translation.x - CAMERA_FOCUS_OFFSET;
+    }
+}
+
+fn player_gravity(mut player_query: Query<&mut Transform, With<Player>>) {
+    if let Ok(mut player_transform) = player_query.get_single_mut() {
+        player_transform.translation.y -= PLAYER_GRAVITY;
     }
 }
