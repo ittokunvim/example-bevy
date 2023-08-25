@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::sprite::collide_aabb::{collide, Collision};
 use bevy::sprite::MaterialMesh2dBundle;
 
 use serde::{Deserialize, Serialize};
@@ -42,6 +43,7 @@ fn main() {
         .add_systems(Update, apply_velocity)
         .add_systems(Update, focus_camera_on_player)
         .add_systems(Update, player_gravity)
+        .add_systems(Update, ground_collision)
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -55,7 +57,9 @@ struct TileMap {
 struct TileGround;
 
 #[derive(Component)]
-struct Player;
+struct Player {
+    on_ground: bool,
+}
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec3);
@@ -113,7 +117,7 @@ fn setup_player(
             },
             ..default()
         },
-        Player,
+        Player { on_ground: false },
         Velocity(Vec3::new(PLAYER_SPEED, 0.0, 0.0)),
     ));
 }
@@ -136,8 +140,37 @@ fn focus_camera_on_player(
     }
 }
 
-fn player_gravity(mut player_query: Query<&mut Transform, With<Player>>) {
-    if let Ok(mut player_transform) = player_query.get_single_mut() {
-        player_transform.translation.y -= PLAYER_GRAVITY;
+fn player_gravity(mut player_query: Query<(&mut Transform, &Player), With<Player>>) {
+    if let Ok((mut player_transform, player)) = player_query.get_single_mut() {
+        if !player.on_ground {
+            player_transform.translation.y -= PLAYER_GRAVITY;
+        }
+    }
+}
+
+fn ground_collision(
+    mut player_query: Query<(&Transform, &mut Player, &mut Velocity), With<Player>>,
+    ground_query: Query<&Transform, (With<TileGround>, Without<Player>)>,
+) {
+    let (player_transform, mut player, mut player_velocity) = player_query.single_mut();
+    let player_size = player_transform.scale.truncate();
+    player.on_ground = false;
+    player_velocity.x = PLAYER_SPEED;
+
+    for ground_transform in ground_query.iter() {
+        let collision = collide(
+            player_transform.translation,
+            player_size,
+            ground_transform.translation,
+            ground_transform.scale.truncate(),
+        );
+
+        if let Some(collision) = collision {
+            match collision {
+                Collision::Top => player.on_ground = true,
+                Collision::Left => player_velocity.x = 0.0,
+                _ => {}
+            }
+        }
     }
 }
