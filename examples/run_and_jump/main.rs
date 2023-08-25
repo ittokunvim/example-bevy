@@ -14,6 +14,7 @@ const PLAYER_SIZE: Vec3 = Vec3::new(25.0, 25.0, 0.0);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
 const PLAYER_SPEED: f32 = 100.0;
 const PLAYER_GRAVITY: f32 = 3.0;
+const PLAYER_JUMP: f32 = 30.0;
 
 const CAMERA_FOCUS_OFFSET: f32 = -200.0;
 
@@ -44,6 +45,7 @@ fn main() {
         .add_systems(Update, focus_camera_on_player)
         .add_systems(Update, player_gravity)
         .add_systems(Update, ground_collision)
+        .add_systems(Update, jump_player)
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -58,6 +60,7 @@ struct TileGround;
 
 #[derive(Component)]
 struct Player {
+    vel_y: f32,
     on_ground: bool,
 }
 
@@ -117,7 +120,10 @@ fn setup_player(
             },
             ..default()
         },
-        Player { on_ground: false },
+        Player {
+            vel_y: 0.0,
+            on_ground: false,
+        },
         Velocity(Vec3::new(PLAYER_SPEED, 0.0, 0.0)),
     ));
 }
@@ -168,9 +174,24 @@ fn ground_collision(
         if let Some(collision) = collision {
             match collision {
                 Collision::Top => player.on_ground = true,
-                Collision::Left => player_velocity.x = 0.0,
                 _ => {}
             }
+        }
+    }
+}
+
+fn jump_player(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
+) {
+    if let Ok((mut player, mut player_transform)) = player_query.get_single_mut() {
+        if keyboard_input.just_pressed(KeyCode::Space) {
+            player.vel_y += PLAYER_JUMP;
+        }
+
+        if player.vel_y > 0.0 {
+            player.vel_y -= PLAYER_GRAVITY;
+            player_transform.translation.y += player.vel_y;
         }
     }
 }
