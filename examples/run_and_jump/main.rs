@@ -15,6 +15,7 @@ const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
 const PLAYER_SPEED: f32 = 100.0;
 const PLAYER_GRAVITY: f32 = 3.0;
 const PLAYER_JUMP: f32 = 30.0;
+const PLAYER_JUMP_COUNT: u32 = 2;
 
 const CAMERA_FOCUS_OFFSET: f32 = -200.0;
 
@@ -61,6 +62,7 @@ struct TileGround;
 #[derive(Component)]
 struct Player {
     vel_y: f32,
+    jump_count: u32,
     on_ground: bool,
 }
 
@@ -122,6 +124,7 @@ fn setup_player(
         },
         Player {
             vel_y: 0.0,
+            jump_count: PLAYER_JUMP_COUNT,
             on_ground: false,
         },
         Velocity(Vec3::new(PLAYER_SPEED, 0.0, 0.0)),
@@ -146,10 +149,13 @@ fn focus_camera_on_player(
     }
 }
 
-fn player_gravity(mut player_query: Query<(&mut Transform, &Player), With<Player>>) {
-    if let Ok((mut player_transform, player)) = player_query.get_single_mut() {
+fn player_gravity(mut player_query: Query<(&mut Transform, &mut Player), With<Player>>) {
+    if let Ok((mut player_transform, mut player)) = player_query.get_single_mut() {
         if !player.on_ground {
             player_transform.translation.y -= PLAYER_GRAVITY;
+            if player.jump_count >= PLAYER_JUMP_COUNT {
+                player.jump_count = 1;
+            }
         }
     }
 }
@@ -173,7 +179,10 @@ fn ground_collision(
 
         if let Some(collision) = collision {
             match collision {
-                Collision::Top => player.on_ground = true,
+                Collision::Top => {
+                    player.on_ground = true;
+                    player.jump_count = PLAYER_JUMP_COUNT;
+                }
                 _ => {}
             }
         }
@@ -186,7 +195,10 @@ fn jump_player(
 ) {
     if let Ok((mut player, mut player_transform)) = player_query.get_single_mut() {
         if keyboard_input.just_pressed(KeyCode::Space) {
-            player.vel_y += PLAYER_JUMP;
+            if player.jump_count > 0 {
+                player.vel_y += PLAYER_JUMP;
+                player.jump_count -= 1;
+            }
         }
 
         if player.vel_y > 0.0 {
