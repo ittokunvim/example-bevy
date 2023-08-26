@@ -46,13 +46,15 @@ fn main() {
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_systems(Startup, setup_camera)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
-        .add_systems(Startup, setup_tilemap)
-        .add_systems(Startup, setup_player)
+        .add_systems(OnEnter(AppState::InGame), setup_tilemap)
+        .add_systems(OnEnter(AppState::InGame), setup_player)
         .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
         .add_systems(Update, focus_camera_on_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, player_gravity.run_if(in_state(AppState::InGame)))
         .add_systems(Update, ground_collision.run_if(in_state(AppState::InGame)))
         .add_systems(Update, jump_player.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, press_any_key.run_if(in_state(AppState::GameOver)))
+        .add_systems(OnExit(AppState::GameOver), teardown)
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -158,13 +160,20 @@ fn focus_camera_on_player(
     }
 }
 
-fn player_gravity(mut player_query: Query<(&mut Transform, &mut Player), With<Player>>) {
+fn player_gravity(
+    mut player_query: Query<(&mut Transform, &mut Player), With<Player>>,
+    mut app_state: ResMut<NextState<AppState>>,
+) {
     if let Ok((mut player_transform, mut player)) = player_query.get_single_mut() {
         if !player.on_ground {
             player_transform.translation.y -= PLAYER_GRAVITY;
             if player.jump_count >= PLAYER_JUMP_COUNT {
                 player.jump_count = 1;
             }
+        }
+
+        if player_transform.translation.y < -WINDOW_SIZE.y / 2.0 - player_transform.scale.y {
+            app_state.set(AppState::GameOver);
         }
     }
 }
@@ -254,5 +263,18 @@ fn press_any_key(
             app_state.set(AppState::InGame);
             inkey.reset_all();
         }
+    }
+}
+
+fn teardown(
+    mut commands: Commands,
+    entities: Query<Entity, (Without<Camera>, Without<Window>)>,
+    mut camera_query: Query<&mut Transform, (With<Camera2d>, Without<Player>)>,
+) {
+    let mut camera_transform = camera_query.single_mut();
+    camera_transform.translation.x = 0.0;
+
+    for entity in &entities {
+        commands.entity(entity).despawn();
     }
 }
