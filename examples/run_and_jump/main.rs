@@ -1,3 +1,4 @@
+use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy::sprite::collide_aabb::{collide, Collision};
 use bevy::sprite::MaterialMesh2dBundle;
@@ -18,6 +19,10 @@ const PLAYER_JUMP: f32 = 30.0;
 const PLAYER_JUMP_COUNT: u32 = 2;
 
 const CAMERA_FOCUS_OFFSET: f32 = -200.0;
+
+const PRESSANYKEY_FONT_SIZE: f32 = 30.0;
+const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+const PRESSANYKEY_TEXT_PADDING: f32 = 20.0;
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
@@ -40,13 +45,14 @@ fn main() {
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_systems(Startup, setup_camera)
+        .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
         .add_systems(Startup, setup_tilemap)
         .add_systems(Startup, setup_player)
-        .add_systems(Update, apply_velocity)
-        .add_systems(Update, focus_camera_on_player)
-        .add_systems(Update, player_gravity)
-        .add_systems(Update, ground_collision)
-        .add_systems(Update, jump_player)
+        .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, focus_camera_on_player.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, player_gravity.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, ground_collision.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, jump_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -68,6 +74,9 @@ struct Player {
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec3);
+
+#[derive(Component)]
+struct PressAnyKey;
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
@@ -204,6 +213,46 @@ fn jump_player(
         if player.vel_y > 0.0 {
             player.vel_y -= PLAYER_GRAVITY;
             player_transform.translation.y += player.vel_y;
+        }
+    }
+}
+
+fn press_any_key(
+    asset_server: Res<AssetServer>,
+    mut keyboard_event: EventReader<KeyboardInput>,
+    pressanykey_query: Query<Entity, With<PressAnyKey>>,
+    mut commands: Commands,
+    mut app_state: ResMut<NextState<AppState>>,
+    mut inkey: ResMut<Input<KeyCode>>,
+) {
+    if pressanykey_query.is_empty() {
+        let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
+
+        commands.spawn((
+            TextBundle::from_section(
+                "Press Any Key ...",
+                TextStyle {
+                    font: font_bold,
+                    font_size: PRESSANYKEY_FONT_SIZE,
+                    color: PRESSANYKEY_COLOR,
+                },
+            )
+            .with_style(Style {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(PRESSANYKEY_TEXT_PADDING),
+                right: Val::Px(PRESSANYKEY_TEXT_PADDING),
+                ..default()
+            }),
+            PressAnyKey,
+        ));
+    }
+
+    for _event in keyboard_event.iter() {
+        if let Ok(pressanykey_entity) = pressanykey_query.get_single() {
+            commands.entity(pressanykey_entity).despawn();
+
+            app_state.set(AppState::InGame);
+            inkey.reset_all();
         }
     }
 }
