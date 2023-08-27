@@ -9,7 +9,8 @@ const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 
 const TILE_SIZE: f32 = 40.0;
-const TILE_COLOR: Color = Color::rgb(0.5, 0.3, 0.2);
+const TILE_GROUND_COLOR: Color = Color::rgb(0.5, 0.3, 0.2);
+const TILE_GOAL_COLOR: Color = Color::rgb(0.8, 0.8, 0.2);
 
 const PLAYER_SIZE: Vec3 = Vec3::new(25.0, 25.0, 0.0);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
@@ -74,6 +75,9 @@ struct TileMap {
 struct TileGround;
 
 #[derive(Component)]
+struct TileGoal;
+
+#[derive(Component)]
 struct Player {
     vel_y: f32,
     jump_count: u32,
@@ -96,14 +100,14 @@ fn setup_tilemap(mut commands: Commands) {
 
     for (y, row) in tile_map.map.iter().enumerate() {
         for (x, cell) in row.iter().enumerate() {
-            if cell == &1 {
+            if cell > &0 {
                 let tile_y = window_top_left.y - TILE_SIZE * (y as f32 + 0.5) as f32;
                 let tile_x = window_top_left.x + TILE_SIZE * (x as f32 + 0.5) as f32;
 
-                commands.spawn((
+                let tile_ground = (
                     SpriteBundle {
                         sprite: Sprite {
-                            color: TILE_COLOR,
+                            color: TILE_GROUND_COLOR,
                             ..default()
                         },
                         transform: Transform {
@@ -114,7 +118,28 @@ fn setup_tilemap(mut commands: Commands) {
                         ..default()
                     },
                     TileGround,
-                ));
+                );
+                let tile_goal = (
+                    SpriteBundle {
+                        sprite: Sprite {
+                            color: TILE_GOAL_COLOR,
+                            ..default()
+                        },
+                        transform: Transform {
+                            translation: Vec3::new(tile_x, tile_y, 0.0),
+                            scale: Vec3::splat(TILE_SIZE),
+                            ..default()
+                        },
+                        ..default()
+                    },
+                    TileGoal,
+                );
+
+                match cell {
+                    1 => commands.spawn(tile_ground),
+                    2 => commands.spawn(tile_goal),
+                    _ => commands.spawn(SpriteBundle::default()),
+                };
             }
         }
     }
