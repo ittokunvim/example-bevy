@@ -24,6 +24,11 @@ const PRESSANYKEY_FONT_SIZE: f32 = 30.0;
 const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 const PRESSANYKEY_TEXT_PADDING: f32 = 20.0;
 
+const GAMEOVER_TEXT_PADDING: f32 = 40.0;
+const GAMEOVER_BACKGROUND_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
+const GAMEOVER_FONT_SIZE: f32 = 50.0;
+const GAMEOVER_FONT_COLOR: Color = Color::rgb(0.9, 0.1, 0.1);
+
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
     #[default]
@@ -53,6 +58,7 @@ fn main() {
         .add_systems(Update, player_gravity.run_if(in_state(AppState::InGame)))
         .add_systems(Update, ground_collision.run_if(in_state(AppState::InGame)))
         .add_systems(Update, jump_player.run_if(in_state(AppState::InGame)))
+        .add_systems(OnEnter(AppState::GameOver), display_gameover)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::GameOver)))
         .add_systems(OnExit(AppState::GameOver), teardown)
         .add_systems(Update, bevy::window::close_on_esc)
@@ -277,4 +283,43 @@ fn teardown(
     for entity in &entities {
         commands.entity(entity).despawn();
     }
+}
+
+fn display_gameover(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
+
+    let text_parent = NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        ..default()
+    };
+    let text_background = NodeBundle {
+        style: Style {
+            padding: UiRect::all(Val::Px(GAMEOVER_TEXT_PADDING)),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        background_color: GAMEOVER_BACKGROUND_COLOR.into(),
+        ..default()
+    };
+
+    let text = TextBundle::from_sections([TextSection::new(
+        "Game Over",
+        TextStyle {
+            font: font_bold.clone(),
+            font_size: GAMEOVER_FONT_SIZE,
+            color: GAMEOVER_FONT_COLOR,
+        },
+    )]);
+
+    commands.spawn(text_parent).with_children(|parent| {
+        parent.spawn(text_background).with_children(|parent| {
+            parent.spawn(text);
+        });
+    });
 }
