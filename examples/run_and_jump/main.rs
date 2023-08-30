@@ -25,10 +25,11 @@ const PRESSANYKEY_FONT_SIZE: f32 = 30.0;
 const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 const PRESSANYKEY_TEXT_PADDING: f32 = 20.0;
 
-const GAMEOVER_TEXT_PADDING: f32 = 40.0;
-const GAMEOVER_BACKGROUND_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
-const GAMEOVER_FONT_SIZE: f32 = 50.0;
+const RESULT_TEXT_PADDING: f32 = 40.0;
+const RESULT_BACKGROUND_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
+const RESULT_FONT_SIZE: f32 = 50.0;
 const GAMEOVER_FONT_COLOR: Color = Color::rgb(0.9, 0.1, 0.1);
+const GAMECLEAR_FONT_COLOR: Color = Color::rgb(0.1, 0.9, 0.1);
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
@@ -62,9 +63,15 @@ fn main() {
         .add_systems(Update, ground_collision.run_if(in_state(AppState::InGame)))
         .add_systems(Update, goal_collision.run_if(in_state(AppState::InGame)))
         .add_systems(Update, jump_player.run_if(in_state(AppState::InGame)))
+
+        .add_systems(OnEnter(AppState::GameClear), display_gameclear)
+        .add_systems(Update, press_any_key.run_if(in_state(AppState::GameClear)))
+        .add_systems(OnExit(AppState::GameClear), teardown)
+
         .add_systems(OnEnter(AppState::GameOver), display_gameover)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::GameOver)))
         .add_systems(OnExit(AppState::GameOver), teardown)
+
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
@@ -349,12 +356,12 @@ fn display_gameover(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
     let text_background = NodeBundle {
         style: Style {
-            padding: UiRect::all(Val::Px(GAMEOVER_TEXT_PADDING)),
+            padding: UiRect::all(Val::Px(RESULT_TEXT_PADDING)),
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Center,
             ..default()
         },
-        background_color: GAMEOVER_BACKGROUND_COLOR.into(),
+        background_color: RESULT_BACKGROUND_COLOR.into(),
         ..default()
     };
 
@@ -362,8 +369,47 @@ fn display_gameover(mut commands: Commands, asset_server: Res<AssetServer>) {
         "Game Over",
         TextStyle {
             font: font_bold.clone(),
-            font_size: GAMEOVER_FONT_SIZE,
+            font_size: RESULT_FONT_SIZE,
             color: GAMEOVER_FONT_COLOR,
+        },
+    )]);
+
+    commands.spawn(text_parent).with_children(|parent| {
+        parent.spawn(text_background).with_children(|parent| {
+            parent.spawn(text);
+        });
+    });
+}
+
+fn display_gameclear(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
+
+    let text_parent = NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        ..default()
+    };
+    let text_background = NodeBundle {
+        style: Style {
+            padding: UiRect::all(Val::Px(RESULT_TEXT_PADDING)),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        background_color: RESULT_BACKGROUND_COLOR.into(),
+        ..default()
+    };
+
+    let text = TextBundle::from_sections([TextSection::new(
+        "Game Clear",
+        TextStyle {
+            font: font_bold.clone(),
+            font_size: RESULT_FONT_SIZE,
+            color: GAMECLEAR_FONT_COLOR,
         },
     )]);
 
