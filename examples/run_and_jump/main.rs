@@ -35,6 +35,7 @@ enum AppState {
     #[default]
     MainMenu,
     InGame,
+    GameClear,
     GameOver,
 }
 
@@ -52,12 +53,14 @@ fn main() {
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_systems(Startup, setup_camera)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
+
         .add_systems(OnEnter(AppState::InGame), setup_tilemap)
         .add_systems(OnEnter(AppState::InGame), setup_player)
         .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
         .add_systems(Update, focus_camera_on_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, player_gravity.run_if(in_state(AppState::InGame)))
         .add_systems(Update, ground_collision.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, goal_collision.run_if(in_state(AppState::InGame)))
         .add_systems(Update, jump_player.run_if(in_state(AppState::InGame)))
         .add_systems(OnEnter(AppState::GameOver), display_gameover)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::GameOver)))
@@ -234,6 +237,28 @@ fn ground_collision(
                 }
                 _ => {}
             }
+        }
+    }
+}
+
+fn goal_collision(
+    player_query: Query<&Transform, With<Player>>,
+    goal_query: Query<&Transform, (With<TileGoal>, Without<Player>)>,
+    mut app_state: ResMut<NextState<AppState>>,
+) {
+    let player_transform = player_query.single();
+    let player_size = player_transform.scale.truncate();
+
+    for goal_transform in goal_query.iter() {
+        let collision = collide(
+            player_transform.translation,
+            player_size,
+            goal_transform.translation,
+            goal_transform.scale.truncate(),
+        );
+
+        if let Some(_) = collision {
+            app_state.set(AppState::GameClear);
         }
     }
 }
