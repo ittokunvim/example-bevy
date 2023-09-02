@@ -28,7 +28,11 @@ const PRESSANYKEY_TEXT_PADDING: f32 = 20.0;
 const RESULT_TEXT_PADDING: f32 = 40.0;
 const RESULT_BACKGROUND_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
 const RESULT_FONT_SIZE: f32 = 50.0;
+const RESULT_FONT_SIZE_SMALL: f32 = 30.0;
+const RESULT_CONTINUE_KEY: KeyCode = KeyCode::A;
+
 const GAMEOVER_FONT_COLOR: Color = Color::rgb(0.9, 0.1, 0.1);
+const GAMEOVER_FONT_COLOR_SMALL: Color = Color::rgb(0.9, 0.4, 0.4);
 const GAMECLEAR_FONT_COLOR: Color = Color::rgb(0.1, 0.9, 0.1);
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
@@ -73,7 +77,7 @@ fn main() {
         .add_systems(OnExit(AppState::GameClear), teardown)
 
         .add_systems(OnEnter(AppState::GameOver), display_gameover)
-        .add_systems(Update, press_any_key.run_if(in_state(AppState::GameOver)))
+        .add_systems(Update, key_gameover.run_if(in_state(AppState::GameOver)))
         .add_systems(OnExit(AppState::GameOver), teardown)
 
         .add_systems(Update, bevy::window::close_on_esc)
@@ -381,7 +385,7 @@ fn display_gameover(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..default()
     };
 
-    let text = TextBundle::from_sections([TextSection::new(
+    let text_gameover = TextBundle::from_sections([TextSection::new(
         "Game Over",
         TextStyle {
             font: font_bold.clone(),
@@ -389,10 +393,19 @@ fn display_gameover(mut commands: Commands, asset_server: Res<AssetServer>) {
             color: GAMEOVER_FONT_COLOR,
         },
     )]);
+    let text_continue = TextBundle::from_sections([TextSection::new(
+        "Continue [A]",
+        TextStyle {
+            font: font_bold.clone(),
+            font_size: RESULT_FONT_SIZE_SMALL,
+            color: GAMEOVER_FONT_COLOR_SMALL,
+        },
+    )]);
 
     commands.spawn(text_parent).with_children(|parent| {
         parent.spawn(text_background).with_children(|parent| {
-            parent.spawn(text);
+            parent.spawn(text_gameover);
+            parent.spawn(text_continue);
         });
     });
 }
@@ -434,4 +447,10 @@ fn display_gameclear(mut commands: Commands, asset_server: Res<AssetServer>) {
             parent.spawn(text);
         });
     });
+}
+
+fn key_gameover(keyboard_input: Res<Input<KeyCode>>, mut app_state: ResMut<NextState<AppState>>) {
+    if keyboard_input.just_pressed(RESULT_CONTINUE_KEY) {
+        app_state.set(AppState::InGame);
+    }
 }
