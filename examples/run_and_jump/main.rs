@@ -12,16 +12,16 @@ const TILE_SIZE: f32 = 40.0;
 const TILE_GROUND_COLOR: Color = Color::rgb(0.5, 0.3, 0.2);
 const TILE_GOAL_COLOR: Color = Color::rgb(0.8, 0.8, 0.2);
 
+const CAMERA_FOCUS_OFFSET: f32 = -200.0;
+
+const MAX_STAGE_COUNT: u32 = 5;
+
 const PLAYER_SIZE: Vec3 = Vec3::new(25.0, 25.0, 0.0);
 const PLAYER_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
 const PLAYER_SPEED: f32 = 100.0;
 const PLAYER_GRAVITY: f32 = 3.0;
 const PLAYER_JUMP: f32 = 30.0;
 const PLAYER_JUMP_COUNT: u32 = 2;
-
-const CAMERA_FOCUS_OFFSET: f32 = -200.0;
-
-const MAX_STAGE_COUNT: u32 = 5;
 
 const PRESSANYKEY_FONT_SIZE: f32 = 30.0;
 const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
@@ -34,10 +34,11 @@ const RESULT_FONT_SIZE_SMALL: f32 = 30.0;
 const RESULT_CONTINUE_KEY: KeyCode = KeyCode::A;
 const RESULT_NEXTSTAGE_KEY: KeyCode = KeyCode::D;
 
-const GAMEOVER_FONT_COLOR: Color = Color::rgb(0.9, 0.1, 0.1);
-const GAMEOVER_FONT_COLOR_SMALL: Color = Color::rgb(0.9, 0.4, 0.4);
 const GAMECLEAR_FONT_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
 const GAMECLEAR_FONT_COLOR_SMALL: Color = Color::rgb(0.4, 0.8, 0.4);
+
+const GAMEOVER_FONT_COLOR: Color = Color::rgb(0.9, 0.1, 0.1);
+const GAMEOVER_FONT_COLOR_SMALL: Color = Color::rgb(0.9, 0.4, 0.4);
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
@@ -72,9 +73,9 @@ fn main() {
         .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
         .add_systems(Update, focus_camera_on_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, player_gravity.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, jump_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, ground_collision.run_if(in_state(AppState::InGame)))
         .add_systems(Update, goal_collision.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, jump_player.run_if(in_state(AppState::InGame)))
 
         .add_systems(OnEnter(AppState::GameClear), display_gameclear)
         .add_systems(Update, key_gameclear.run_if(in_state(AppState::GameClear)))
@@ -116,6 +117,46 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
+fn press_any_key(
+    asset_server: Res<AssetServer>,
+    mut keyboard_event: EventReader<KeyboardInput>,
+    pressanykey_query: Query<Entity, With<PressAnyKey>>,
+    mut commands: Commands,
+    mut app_state: ResMut<NextState<AppState>>,
+    mut inkey: ResMut<Input<KeyCode>>,
+) {
+    if pressanykey_query.is_empty() {
+        let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
+
+        commands.spawn((
+            TextBundle::from_section(
+                "Press Any Key ...",
+                TextStyle {
+                    font: font_bold,
+                    font_size: PRESSANYKEY_FONT_SIZE,
+                    color: PRESSANYKEY_COLOR,
+                },
+            )
+            .with_style(Style {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(PRESSANYKEY_TEXT_PADDING),
+                right: Val::Px(PRESSANYKEY_TEXT_PADDING),
+                ..default()
+            }),
+            PressAnyKey,
+        ));
+    }
+
+    for _event in keyboard_event.iter() {
+        if let Ok(pressanykey_entity) = pressanykey_query.get_single() {
+            commands.entity(pressanykey_entity).despawn();
+
+            app_state.set(AppState::InGame);
+            inkey.reset_all();
+        }
+    }
+}
+
 fn load_tilemap(stage_count: u32) -> TileMap {
     match stage_count {
         1 => serde_json::from_slice(include_bytes!("stage_1.json")).unwrap(),
@@ -128,7 +169,7 @@ fn load_tilemap(stage_count: u32) -> TileMap {
 }
 
 fn setup_tilemap(mut commands: Commands, stage_count: Res<StageCount>) {
-    let stage_count = stage_count.0;
+    let stage_count: u32 = stage_count.0;
     let tile_map: TileMap = load_tilemap(stage_count);
     let window_top_left = Vec2::new(-WINDOW_SIZE.x / 2.0, WINDOW_SIZE.y / 2.0);
 
@@ -243,6 +284,25 @@ fn player_gravity(
     }
 }
 
+fn jump_player(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
+) {
+    if let Ok((mut player, mut player_transform)) = player_query.get_single_mut() {
+        if keyboard_input.just_pressed(KeyCode::Space) {
+            if player.jump_count > 0 {
+                player.vel_y += PLAYER_JUMP;
+                player.jump_count -= 1;
+            }
+        }
+
+        if player.vel_y > 0.0 {
+            player.vel_y -= PLAYER_GRAVITY;
+            player_transform.translation.y += player.vel_y;
+        }
+    }
+}
+
 fn ground_collision(
     mut player_query: Query<(&Transform, &mut Player, &mut Velocity), With<Player>>,
     ground_query: Query<&Transform, (With<TileGround>, Without<Player>)>,
@@ -292,126 +352,6 @@ fn goal_collision(
             app_state.set(AppState::GameClear);
         }
     }
-}
-
-fn jump_player(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
-) {
-    if let Ok((mut player, mut player_transform)) = player_query.get_single_mut() {
-        if keyboard_input.just_pressed(KeyCode::Space) {
-            if player.jump_count > 0 {
-                player.vel_y += PLAYER_JUMP;
-                player.jump_count -= 1;
-            }
-        }
-
-        if player.vel_y > 0.0 {
-            player.vel_y -= PLAYER_GRAVITY;
-            player_transform.translation.y += player.vel_y;
-        }
-    }
-}
-
-fn press_any_key(
-    asset_server: Res<AssetServer>,
-    mut keyboard_event: EventReader<KeyboardInput>,
-    pressanykey_query: Query<Entity, With<PressAnyKey>>,
-    mut commands: Commands,
-    mut app_state: ResMut<NextState<AppState>>,
-    mut inkey: ResMut<Input<KeyCode>>,
-) {
-    if pressanykey_query.is_empty() {
-        let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
-
-        commands.spawn((
-            TextBundle::from_section(
-                "Press Any Key ...",
-                TextStyle {
-                    font: font_bold,
-                    font_size: PRESSANYKEY_FONT_SIZE,
-                    color: PRESSANYKEY_COLOR,
-                },
-            )
-            .with_style(Style {
-                position_type: PositionType::Absolute,
-                bottom: Val::Px(PRESSANYKEY_TEXT_PADDING),
-                right: Val::Px(PRESSANYKEY_TEXT_PADDING),
-                ..default()
-            }),
-            PressAnyKey,
-        ));
-    }
-
-    for _event in keyboard_event.iter() {
-        if let Ok(pressanykey_entity) = pressanykey_query.get_single() {
-            commands.entity(pressanykey_entity).despawn();
-
-            app_state.set(AppState::InGame);
-            inkey.reset_all();
-        }
-    }
-}
-
-fn teardown(
-    mut commands: Commands,
-    entities: Query<Entity, (Without<Camera>, Without<Window>)>,
-    mut camera_query: Query<&mut Transform, (With<Camera2d>, Without<Player>)>,
-) {
-    let mut camera_transform = camera_query.single_mut();
-    camera_transform.translation.x = 0.0;
-
-    for entity in &entities {
-        commands.entity(entity).despawn();
-    }
-}
-
-fn display_gameover(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
-
-    let text_parent = NodeBundle {
-        style: Style {
-            width: Val::Percent(100.0),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            ..default()
-        },
-        ..default()
-    };
-    let text_background = NodeBundle {
-        style: Style {
-            padding: UiRect::all(Val::Px(RESULT_TEXT_PADDING)),
-            flex_direction: FlexDirection::Column,
-            align_items: AlignItems::Center,
-            ..default()
-        },
-        background_color: RESULT_BACKGROUND_COLOR.into(),
-        ..default()
-    };
-
-    let text_gameover = TextBundle::from_sections([TextSection::new(
-        "Game Over",
-        TextStyle {
-            font: font_bold.clone(),
-            font_size: RESULT_FONT_SIZE,
-            color: GAMEOVER_FONT_COLOR,
-        },
-    )]);
-    let text_continue = TextBundle::from_sections([TextSection::new(
-        "Continue [A]",
-        TextStyle {
-            font: font_bold.clone(),
-            font_size: RESULT_FONT_SIZE_SMALL,
-            color: GAMEOVER_FONT_COLOR_SMALL,
-        },
-    )]);
-
-    commands.spawn(text_parent).with_children(|parent| {
-        parent.spawn(text_background).with_children(|parent| {
-            parent.spawn(text_gameover);
-            parent.spawn(text_continue);
-        });
-    });
 }
 
 fn display_gameclear(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -471,12 +411,6 @@ fn display_gameclear(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 }
 
-fn key_gameover(keyboard_input: Res<Input<KeyCode>>, mut app_state: ResMut<NextState<AppState>>) {
-    if keyboard_input.just_pressed(RESULT_CONTINUE_KEY) {
-        app_state.set(AppState::InGame);
-    }
-}
-
 fn key_gameclear(
     keyboard_input: Res<Input<KeyCode>>,
     mut app_state: ResMut<NextState<AppState>>,
@@ -490,5 +424,72 @@ fn key_gameclear(
             stage_count.0 += 1;
         }
         app_state.set(AppState::InGame);
+    }
+}
+
+fn display_gameover(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
+
+    let text_parent = NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        ..default()
+    };
+    let text_background = NodeBundle {
+        style: Style {
+            padding: UiRect::all(Val::Px(RESULT_TEXT_PADDING)),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        background_color: RESULT_BACKGROUND_COLOR.into(),
+        ..default()
+    };
+
+    let text_gameover = TextBundle::from_sections([TextSection::new(
+        "Game Over",
+        TextStyle {
+            font: font_bold.clone(),
+            font_size: RESULT_FONT_SIZE,
+            color: GAMEOVER_FONT_COLOR,
+        },
+    )]);
+    let text_continue = TextBundle::from_sections([TextSection::new(
+        "Continue [A]",
+        TextStyle {
+            font: font_bold.clone(),
+            font_size: RESULT_FONT_SIZE_SMALL,
+            color: GAMEOVER_FONT_COLOR_SMALL,
+        },
+    )]);
+
+    commands.spawn(text_parent).with_children(|parent| {
+        parent.spawn(text_background).with_children(|parent| {
+            parent.spawn(text_gameover);
+            parent.spawn(text_continue);
+        });
+    });
+}
+
+fn key_gameover(keyboard_input: Res<Input<KeyCode>>, mut app_state: ResMut<NextState<AppState>>) {
+    if keyboard_input.just_pressed(RESULT_CONTINUE_KEY) {
+        app_state.set(AppState::InGame);
+    }
+}
+
+fn teardown(
+    mut commands: Commands,
+    entities: Query<Entity, (Without<Camera>, Without<Window>)>,
+    mut camera_query: Query<&mut Transform, (With<Camera2d>, Without<Player>)>,
+) {
+    let mut camera_transform = camera_query.single_mut();
+    camera_transform.translation.x = 0.0;
+
+    for entity in &entities {
+        commands.entity(entity).despawn();
     }
 }
