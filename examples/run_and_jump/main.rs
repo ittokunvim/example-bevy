@@ -40,6 +40,9 @@ enum AppState {
     GameOver,
 }
 
+#[derive(Resource)]
+struct StageCount(u32);
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -52,6 +55,7 @@ fn main() {
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(StageCount(1))
         .add_systems(Startup, setup_camera)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
 
@@ -104,8 +108,20 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn setup_tilemap(mut commands: Commands) {
-    let tile_map: TileMap = serde_json::from_slice(include_bytes!("map.json")).unwrap();
+fn load_tilemap(stage_count: u32) -> TileMap {
+    match stage_count {
+        1 => serde_json::from_slice(include_bytes!("stage_1.json")).unwrap(),
+        2 => serde_json::from_slice(include_bytes!("stage_2.json")).unwrap(),
+        3 => serde_json::from_slice(include_bytes!("stage_3.json")).unwrap(),
+        4 => serde_json::from_slice(include_bytes!("stage_4.json")).unwrap(),
+        5 => serde_json::from_slice(include_bytes!("stage_5.json")).unwrap(),
+        _ => panic!("invalid stage count"),
+    }
+}
+
+fn setup_tilemap(mut commands: Commands, stage_count: Res<StageCount>) {
+    let stage_count = stage_count.0;
+    let tile_map: TileMap = load_tilemap(stage_count);
     let window_top_left = Vec2::new(-WINDOW_SIZE.x / 2.0, WINDOW_SIZE.y / 2.0);
 
     for (y, row) in tile_map.map.iter().enumerate() {
