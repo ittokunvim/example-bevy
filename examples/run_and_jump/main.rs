@@ -21,6 +21,8 @@ const PLAYER_JUMP_COUNT: u32 = 2;
 
 const CAMERA_FOCUS_OFFSET: f32 = -200.0;
 
+const MAX_STAGE_COUNT: u32 = 5;
+
 const PRESSANYKEY_FONT_SIZE: f32 = 30.0;
 const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 const PRESSANYKEY_TEXT_PADDING: f32 = 20.0;
@@ -30,10 +32,12 @@ const RESULT_BACKGROUND_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
 const RESULT_FONT_SIZE: f32 = 50.0;
 const RESULT_FONT_SIZE_SMALL: f32 = 30.0;
 const RESULT_CONTINUE_KEY: KeyCode = KeyCode::A;
+const RESULT_NEXTSTAGE_KEY: KeyCode = KeyCode::D;
 
 const GAMEOVER_FONT_COLOR: Color = Color::rgb(0.9, 0.1, 0.1);
 const GAMEOVER_FONT_COLOR_SMALL: Color = Color::rgb(0.9, 0.4, 0.4);
-const GAMECLEAR_FONT_COLOR: Color = Color::rgb(0.1, 0.9, 0.1);
+const GAMECLEAR_FONT_COLOR: Color = Color::rgb(0.1, 0.8, 0.1);
+const GAMECLEAR_FONT_COLOR_SMALL: Color = Color::rgb(0.4, 0.8, 0.4);
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
@@ -73,7 +77,7 @@ fn main() {
         .add_systems(Update, jump_player.run_if(in_state(AppState::InGame)))
 
         .add_systems(OnEnter(AppState::GameClear), display_gameclear)
-        .add_systems(Update, press_any_key.run_if(in_state(AppState::GameClear)))
+        .add_systems(Update, key_gameclear.run_if(in_state(AppState::GameClear)))
         .add_systems(OnExit(AppState::GameClear), teardown)
 
         .add_systems(OnEnter(AppState::GameOver), display_gameover)
@@ -432,8 +436,7 @@ fn display_gameclear(mut commands: Commands, asset_server: Res<AssetServer>) {
         background_color: RESULT_BACKGROUND_COLOR.into(),
         ..default()
     };
-
-    let text = TextBundle::from_sections([TextSection::new(
+    let text_gameclear = TextBundle::from_sections([TextSection::new(
         "Game Clear",
         TextStyle {
             font: font_bold.clone(),
@@ -441,16 +444,51 @@ fn display_gameclear(mut commands: Commands, asset_server: Res<AssetServer>) {
             color: GAMECLEAR_FONT_COLOR,
         },
     )]);
+    let text_continue_and_nextstage = TextBundle::from_sections([
+        TextSection::new(
+            "Continue [A]   ",
+            TextStyle {
+                font: font_bold.clone(),
+                font_size: RESULT_FONT_SIZE_SMALL,
+                color: GAMECLEAR_FONT_COLOR_SMALL,
+            },
+        ),
+        TextSection::new(
+            "Next Stage [D]",
+            TextStyle {
+                font: font_bold.clone(),
+                font_size: RESULT_FONT_SIZE_SMALL,
+                color: GAMECLEAR_FONT_COLOR_SMALL,
+            },
+        ),
+    ]);
 
     commands.spawn(text_parent).with_children(|parent| {
         parent.spawn(text_background).with_children(|parent| {
-            parent.spawn(text);
+            parent.spawn(text_gameclear);
+            parent.spawn(text_continue_and_nextstage);
         });
     });
 }
 
 fn key_gameover(keyboard_input: Res<Input<KeyCode>>, mut app_state: ResMut<NextState<AppState>>) {
     if keyboard_input.just_pressed(RESULT_CONTINUE_KEY) {
+        app_state.set(AppState::InGame);
+    }
+}
+
+fn key_gameclear(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut app_state: ResMut<NextState<AppState>>,
+    mut stage_count: ResMut<StageCount>,
+) {
+    if keyboard_input.just_pressed(RESULT_CONTINUE_KEY) {
+        app_state.set(AppState::InGame);
+    }
+    if keyboard_input.just_pressed(RESULT_NEXTSTAGE_KEY) {
+        if stage_count.0 < MAX_STAGE_COUNT {
+            stage_count.0 += 1;
+        }
         app_state.set(AppState::InGame);
     }
 }
