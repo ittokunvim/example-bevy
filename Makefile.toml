@@ -81,3 +81,17 @@ dependencies = [
 	"build_release_catch_game",
 	"build_wasm_catch_game",
 ]
+
+[tasks.build_release_run_and_jump]
+command = "cargo"
+args = ["build", "--release", "--target", "wasm32-unknown-unknown", "--example", "run_and_jump"]
+
+[tasks.build_wasm_run_and_jump]
+command = "wasm-bindgen"
+args = ["--target", "web", "--out-dir", "./page", "target/wasm32-unknown-unknown/release/examples/run_and_jump.wasm"]
+
+[tasks.run_and_jump]
+dependencies = [
+	"build_release_run_and_jump",
+	"build_wasm_run_and_jump",
+]

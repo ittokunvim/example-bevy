@@ -124,3 +124,23 @@ basic-http-server -a 0.0.0.0:4000 ./page
 ```
 
 [ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/catch_game.rs)
+
+### ランアンドジャンプ
+
+一般的にランニングとジャンプのアクションを中心としたゲーム。
+
+以下のコマンドを実行することで、ゲームを開始します。
+
+```bash
+cargo run --example run_and_jump
+```
+
+以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
+
+```bash
+cargo make run_and_jump
+
+basic-http-server -a 0.0.0.0:4000 ./page
+```
+
+[ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/run_and_jump/main.rs)
