@@ -5,6 +5,8 @@ use bevy::{
     sprite::collide_aabb::{collide, Collision},
 };
 
+const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
+
 const SLIDER_SIZE: Vec2 = Vec2::new(500.0, 50.0);
 
 const REFLECTOR_SIZE: Vec2 = Vec2::new(1.0, 50.0);
@@ -46,7 +48,13 @@ struct Scoreboard {
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                resolution: WINDOW_SIZE.into(),
+                ..default()
+            }),
+            ..default()
+        }))
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
@@ -54,7 +62,10 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
         .add_systems(Update, decide_timing.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, check_for_collisions.run_if(in_state(AppState::InGame)))
+        .add_systems(
+            Update,
+            check_for_collisions.run_if(in_state(AppState::InGame)),
+        )
         .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
         .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
