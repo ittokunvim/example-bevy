@@ -4,6 +4,8 @@ use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use rand::Rng;
 
+const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
+
 const BOARD_SIZE_I: usize = 12;
 const BOARD_SIZE_J: usize = 8;
 
@@ -28,7 +30,13 @@ const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                resolution: WINDOW_SIZE.into(),
+                ..default()
+            }),
+            ..default()
+        }))
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
