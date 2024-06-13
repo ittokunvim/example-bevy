@@ -2,14 +2,11 @@ use bevy::{
     audio::Volume,
     input::keyboard::KeyboardInput,
     prelude::*,
-    sprite::collide_aabb::{collide, Collision},
 };
 
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
 
 const SLIDER_SIZE: Vec2 = Vec2::new(500.0, 50.0);
-
-const REFLECTOR_SIZE: Vec2 = Vec2::new(1.0, 50.0);
 
 const CUE_SIZE: Vec2 = Vec2::new(5.0, 50.0);
 const CUE_SPEED: f32 = 500.0;
@@ -30,7 +27,6 @@ const SLIDER_DEFAULT_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
 const SLIDER_OK_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
 const SLIDER_GOOD_COLOR: Color = Color::rgb(0.6, 0.6, 0.6);
 const SLIDER_PERFECT_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
-const REFRECTOR_COLOR: Color = Color::rgb(0.4, 0.4, 0.4);
 const CUE_COLOR: Color = Color::rgb(0.4, 0.4, 0.4);
 const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 
@@ -62,10 +58,6 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
         .add_systems(Update, decide_timing.run_if(in_state(AppState::InGame)))
-        .add_systems(
-            Update,
-            check_for_collisions.run_if(in_state(AppState::InGame)),
-        )
         .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
         .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
         .add_systems(Update, bevy::window::close_on_esc)
@@ -75,14 +67,8 @@ fn main() {
 #[derive(Component)]
 struct Cue;
 
-#[derive(Component)]
-struct Reflector;
-
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
-
-#[derive(Component)]
-struct Collider;
 
 #[derive(Component)]
 struct PressAnyKey;
@@ -148,25 +134,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         ..default()
     });
-
-    let refrector_sprite = |slider_pos_x: f32| SpriteBundle {
-        sprite: Sprite {
-            color: REFRECTOR_COLOR,
-            custom_size: Some(REFLECTOR_SIZE),
-            ..default()
-        },
-        transform: Transform {
-            translation: Vec3::new(slider_pos_x / 2.0, 0.0, 0.0),
-            ..default()
-        },
-        ..default()
-    };
-
-    // left reflector
-    commands.spawn((refrector_sprite(-SLIDER_SIZE.x), Reflector, Collider));
-
-    // right reflector
-    commands.spawn((refrector_sprite(SLIDER_SIZE.x), Reflector, Collider));
 
     // Cue
     commands.spawn((
@@ -261,38 +228,12 @@ fn decide_timing(
     }
 }
 
-fn check_for_collisions(
-    mut cue_query: Query<(&mut Velocity, &Transform), With<Cue>>,
-    collider_query: Query<&Transform, With<Collider>>,
-) {
-    let (mut cue_velocity, cue_transform) = cue_query.single_mut();
-
-    // check collision with reflectors
-    for transform in &collider_query {
-        let collision = collide(
-            cue_transform.translation,
-            CUE_SIZE,
-            transform.translation,
-            transform.scale.truncate(),
-        );
-
-        if let Some(collision) = collision {
-            let reflect_x = match collision {
-                Collision::Left => cue_velocity.x > 0.0,
-                Collision::Right => cue_velocity.x < 0.0,
-                _ => false,
-            };
-
-            // reflect velocity on the x-axis if we hit something on the x-axis
-            if reflect_x {
-                cue_velocity.x = -cue_velocity.x;
-            }
+fn apply_velocity(mut query: Query<(&mut Transform, &mut Velocity)>, time_step: Res<Time<Fixed>>) {
+    for (mut transform, mut velocity) in &mut query {
+        let transform_x = transform.translation.x;
+        if transform_x >= SLIDER_SIZE.x / 2.0 || transform_x <= -SLIDER_SIZE.x / 2.0 {
+            velocity.x = -velocity.x;
         }
-    }
-}
-
-fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<Time<Fixed>>) {
-    for (mut transform, velocity) in &mut query {
         transform.translation.x += velocity.x * time_step.delta().as_secs_f32();
     }
 }
