@@ -57,7 +57,7 @@ fn main() {
         }))
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         .insert_resource(Scoreboard { score: 0 })
         .add_systems(Startup, setup)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
@@ -176,6 +176,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 custom_size: Some(CUE_SIZE),
                 ..default()
             },
+            transform: Transform::from_xyz(0.0, 0.0, 1.0),
             ..default()
         },
         Cue,
@@ -221,7 +222,7 @@ fn press_any_key(
     mut now_state: ResMut<State<AppState>>,
     mut inkey: ResMut<Input<KeyCode>>,
 ) {
-    for _event in keyboard_event.iter() {
+    for _event in keyboard_event.read() {
         let pressanykey_entity = pressanykey_query.single();
         commands.entity(pressanykey_entity).despawn();
 
@@ -290,9 +291,9 @@ fn check_for_collisions(
     }
 }
 
-fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
+fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<Time<Fixed>>) {
     for (mut transform, velocity) in &mut query {
-        transform.translation.x += velocity.x * time_step.period.as_secs_f32();
+        transform.translation.x += velocity.x * time_step.delta().as_secs_f32();
     }
 }
 
