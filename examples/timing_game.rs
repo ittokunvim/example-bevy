@@ -5,29 +5,34 @@ use bevy::{
 };
 
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
+const BACKGROUND_COLOR: Color = Color::rgb(1.0, 1.0, 1.0);
 
 const SLIDER_SIZE: Vec2 = Vec2::new(500.0, 50.0);
+const SLIDER_DEFAULT_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
+const SLIDER_DEFAULT_POINTS: isize = -100;
+
+const SLIDER_OK_RANGE: f32 = 100.0;
+const SLIDER_OK_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
+const SLIDER_OK_POINTS: isize = 10;
+
+const SLIDER_GOOD_RANGE: f32 = 60.0;
+const SLIDER_GOOD_COLOR: Color = Color::rgb(0.6, 0.6, 0.6);
+const SLIDER_GOOD_POINTS: isize = 50;
+
+const SLIDER_PERFECT_RANGE: f32 = 20.0;
+const SLIDER_PERFECT_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+const SLIDER_PERFECT_POINTS: isize = 100;
 
 const CUE_SIZE: Vec2 = Vec2::new(5.0, 50.0);
 const CUE_SPEED: f32 = 500.0;
 const INITIAL_CUE_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
-
-const PERFECT_TIMING_RANGE: f32 = 10.0;
-const GOOD_TIMING_RANGE: f32 = 50.0;
-const OK_TIMING_RANGE: f32 = 150.0;
+const CUE_COLOR: Color = Color::rgb(0.4, 0.4, 0.4);
 
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 
 const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
 const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
-
-const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
-const SLIDER_DEFAULT_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
-const SLIDER_OK_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
-const SLIDER_GOOD_COLOR: Color = Color::rgb(0.6, 0.6, 0.6);
-const SLIDER_PERFECT_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
-const CUE_COLOR: Color = Color::rgb(0.4, 0.4, 0.4);
 const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
@@ -65,13 +70,13 @@ fn main() {
 }
 
 #[derive(Component)]
+struct PressAnyKey;
+
+#[derive(Component)]
 struct Cue;
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
-
-#[derive(Component)]
-struct PressAnyKey;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
@@ -105,35 +110,23 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..default()
     });
 
-    // Slider ok timing range
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            color: SLIDER_OK_COLOR,
-            custom_size: Some(Vec2::new(OK_TIMING_RANGE * 2.0, SLIDER_SIZE.y)),
-            ..default()
-        },
-        ..default()
-    });
+    [
+        (SLIDER_OK_COLOR, SLIDER_OK_RANGE),
+        (SLIDER_GOOD_COLOR, SLIDER_GOOD_RANGE),
+        (SLIDER_PERFECT_COLOR, SLIDER_PERFECT_RANGE),
+    ]
+        .iter()
+        .for_each(|(color, range)| {
+            commands.spawn(SpriteBundle {
+                sprite: Sprite {
+                    color: *color,
+                    custom_size: Some(Vec2::new(range * 2.0, SLIDER_SIZE.y)),
+                    ..default()
+                },
+                ..default()
+            });
 
-    // Slider good timing range
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            color: SLIDER_GOOD_COLOR,
-            custom_size: Some(Vec2::new(GOOD_TIMING_RANGE * 2.0, SLIDER_SIZE.y)),
-            ..default()
-        },
-        ..default()
-    });
-
-    // Slider parfect timing range
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            color: SLIDER_PERFECT_COLOR,
-            custom_size: Some(Vec2::new(PERFECT_TIMING_RANGE * 2.0, SLIDER_SIZE.y)),
-            ..default()
-        },
-        ..default()
-    });
+        });
 
     // Cue
     commands.spawn((
@@ -172,12 +165,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
             ),
         ])
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            top: SCOREBOARD_TEXT_PADDING,
-            left: SCOREBOARD_TEXT_PADDING,
-            ..default()
-        }),
+            .with_style(Style {
+                position_type: PositionType::Absolute,
+                top: SCOREBOARD_TEXT_PADDING,
+                left: SCOREBOARD_TEXT_PADDING,
+                ..default()
+            }),
         Scoreboard { score: 0 },
     ));
 }
@@ -216,14 +209,14 @@ fn decide_timing(
 
         let cue_translation_x = cue_transform.translation.x;
 
-        if cue_translation_x < PERFECT_TIMING_RANGE && cue_translation_x > -PERFECT_TIMING_RANGE {
-            scoreboard.score += 100;
-        } else if cue_translation_x < GOOD_TIMING_RANGE && cue_translation_x > -GOOD_TIMING_RANGE {
-            scoreboard.score += 50;
-        } else if cue_translation_x < OK_TIMING_RANGE && cue_translation_x > -OK_TIMING_RANGE {
-            scoreboard.score += 10;
+        if cue_translation_x < SLIDER_PERFECT_RANGE && cue_translation_x > -SLIDER_PERFECT_RANGE {
+            scoreboard.score += SLIDER_PERFECT_POINTS;
+        } else if cue_translation_x < SLIDER_GOOD_RANGE && cue_translation_x > -SLIDER_GOOD_RANGE {
+            scoreboard.score += SLIDER_GOOD_POINTS;
+        } else if cue_translation_x < SLIDER_OK_RANGE && cue_translation_x > -SLIDER_OK_RANGE {
+            scoreboard.score += SLIDER_OK_POINTS;
         } else {
-            scoreboard.score += -100;
+            scoreboard.score += SLIDER_DEFAULT_POINTS;
         }
     }
 }
