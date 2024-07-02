@@ -5,13 +5,14 @@ use bevy::{
 };
 
 const WINDOW_SIZE: Vec2 = Vec2::new(700.0, 700.0);
-const WINDOW_HALF_SIZE: Vec2 = Vec2::new(WINDOW_SIZE.x / 2.0, WINDOW_SIZE.y / 2.0);
+const BACKGROUND_COLOR: Color = Color::rgb(0.0, 0.0, 0.0);
 
 const PLAYER_SPEED: f32 = 200.0;
 const PLAYER_SIZE: f32 = 15.0;
 const PLAYER_HP: f32 = 3.0;
 const GAP_BETWEEN_PLAYER_AND_FLOOR: f32 = 40.0;
 const PLAYER_PADDING: f32 = 20.0;
+const PLAYER_COLOR: Color = Color::rgb(0.3, 0.9, 0.3);
 
 const ENEMY_SPEED: f32 = 100.0;
 const ENEMY_SIZE: f32 = 15.0;
@@ -19,6 +20,7 @@ const ENEMY_HP: f32 = 3.0;
 const GAP_BETWEEN_ENEMY_AND_TOP: f32 = 40.0;
 const INITIAL_ENEMY_DIRECTION: Vec2 = Vec2::new(-0.5, 0.0);
 const ENEMY_ATTACK_INTERVAL: f32 = 0.2;
+const ENEMY_COLOR: Color = Color::rgb(0.9, 0.3, 0.3);
 
 const SCOREBOARD_FONT_SIZE: f32 = 20.0;
 const SCOREBOARD_TEXT_PADDING: f32 = 5.0;
@@ -26,18 +28,14 @@ const SCOREBOARD_SIZE: Vec2 = Vec2::new(
     WINDOW_SIZE.x,
     SCOREBOARD_FONT_SIZE + SCOREBOARD_TEXT_PADDING,
 );
+const SCOREBOARD_TEXT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
+const SCOREBOARD_BG_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 
 const BULLET_SPEED: f32 = 800.0;
 const BULLET_SIZE: f32 = 5.0;
 
 const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
 const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
-
-const BACKGROUND_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
-const PLAYER_COLOR: Color = Color::rgb(0.3, 0.9, 0.3);
-const ENEMY_COLOR: Color = Color::rgb(0.9, 0.3, 0.3);
-const TEXT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
-const SCOREBOARD_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
 
 fn main() {
@@ -121,7 +119,7 @@ fn setup(
     commands.spawn(Camera2dBundle::default());
 
     // Player
-    let player_y = -WINDOW_HALF_SIZE.y + GAP_BETWEEN_PLAYER_AND_FLOOR;
+    let player_y = -WINDOW_SIZE.y / 2.0 + GAP_BETWEEN_PLAYER_AND_FLOOR;
 
     commands.spawn((
         MaterialMesh2dBundle {
@@ -140,7 +138,7 @@ fn setup(
     ));
 
     // Enemy
-    let enemy_y = WINDOW_HALF_SIZE.y - SCOREBOARD_SIZE.y - GAP_BETWEEN_ENEMY_AND_TOP;
+    let enemy_y = WINDOW_SIZE.y / 2.0 - SCOREBOARD_SIZE.y - GAP_BETWEEN_ENEMY_AND_TOP;
 
     commands.spawn((
         MaterialMesh2dBundle {
@@ -166,7 +164,7 @@ fn setup(
         let style = TextStyle {
             font,
             font_size: SCOREBOARD_FONT_SIZE,
-            color: TEXT_COLOR,
+            color: SCOREBOARD_TEXT_COLOR,
         };
         TextSection::new(text, style)
     };
@@ -192,12 +190,12 @@ fn setup(
     // Scoreboard background
     commands.spawn(SpriteBundle {
         sprite: Sprite {
-            color: SCOREBOARD_COLOR,
+            color: SCOREBOARD_BG_COLOR,
             custom_size: Some(SCOREBOARD_SIZE),
             ..default()
         },
         transform: Transform::from_translation(
-            Vec2::new(0.0, WINDOW_HALF_SIZE.y - SCOREBOARD_SIZE.y / 2.).extend(0.0),
+            Vec2::new(0.0, WINDOW_SIZE.y / 2.0 - SCOREBOARD_SIZE.y / 2.).extend(0.0),
         ),
         ..default()
     });
@@ -264,14 +262,14 @@ fn move_player(
     // Player x movement
     let new_player_position_x = player_transform.translation.x
         + direction.x * PLAYER_SPEED * time_step.delta().as_secs_f32();
-    let left_bound = -WINDOW_HALF_SIZE.x + PLAYER_SIZE / 2.0 + PLAYER_PADDING;
-    let right_bound = WINDOW_HALF_SIZE.x - PLAYER_SIZE / 2.0 - PLAYER_PADDING;
+    let left_bound = -WINDOW_SIZE.x / 2.0 + PLAYER_SIZE / 2.0 + PLAYER_PADDING;
+    let right_bound = WINDOW_SIZE.x / 2.0 - PLAYER_SIZE / 2.0 - PLAYER_PADDING;
 
     // Player y movement
     let new_player_position_y = player_transform.translation.y
         + direction.y * PLAYER_SPEED * time_step.delta().as_secs_f32();
-    let up_bound = -WINDOW_HALF_SIZE.y + PLAYER_SIZE / 2.0 + PLAYER_PADDING;
-    let down_bound = WINDOW_HALF_SIZE.y - PLAYER_SIZE / 2.0 - PLAYER_PADDING - SCOREBOARD_SIZE.y;
+    let up_bound = -WINDOW_SIZE.y / 2.0 + PLAYER_SIZE / 2.0 + PLAYER_PADDING;
+    let down_bound = WINDOW_SIZE.y / 2.0 - PLAYER_SIZE / 2.0 - PLAYER_PADDING - SCOREBOARD_SIZE.y;
 
     player_transform.translation.x = new_player_position_x.clamp(left_bound, right_bound);
     player_transform.translation.y = new_player_position_y.clamp(up_bound, down_bound);
@@ -316,9 +314,9 @@ fn move_enemy(mut enemy_query: Query<(&Transform, &mut Velocity), With<Enemy>>) 
 
     let (enemy_transform, mut enemy_velocity) = enemy_query.single_mut();
     let left_window_collision =
-        WINDOW_HALF_SIZE.x < enemy_transform.translation.x + ENEMY_SIZE / 2.0 + 10.0;
+        WINDOW_SIZE.x / 2.0 < enemy_transform.translation.x + ENEMY_SIZE / 2.0 + 10.0;
     let right_window_collision =
-        -WINDOW_HALF_SIZE.x > enemy_transform.translation.x - ENEMY_SIZE / 2.0 - 10.0;
+        -WINDOW_SIZE.x / 2.0 > enemy_transform.translation.x - ENEMY_SIZE / 2.0 - 10.0;
 
     if left_window_collision || right_window_collision {
         enemy_velocity.x = -enemy_velocity.x;
@@ -400,14 +398,17 @@ fn bullet_collision(
     }
 }
 
-fn remove_bullet(mut commands: Commands, bullet_query: Query<(Entity, &Transform), With<Bullet>>) {
+fn remove_bullet(
+    mut commands: Commands,
+    bullet_query: Query<(Entity, &Transform), With<Bullet>>
+) {
     for (bullet_entity, bullet_transform) in bullet_query.iter() {
         let bullet_pos = bullet_transform.translation;
 
-        if bullet_pos.x < -WINDOW_HALF_SIZE.x
-            || bullet_pos.x > WINDOW_HALF_SIZE.x
-            || bullet_pos.y < -WINDOW_HALF_SIZE.y
-            || bullet_pos.y > WINDOW_HALF_SIZE.y
+        if bullet_pos.x < -WINDOW_SIZE.x / 2.0
+            || bullet_pos.x > WINDOW_SIZE.x / 2.0
+            || bullet_pos.y < -WINDOW_SIZE.y / 2.0
+            || bullet_pos.y > WINDOW_SIZE.y / 2.0
         {
             commands.entity(bullet_entity).despawn();
         }
