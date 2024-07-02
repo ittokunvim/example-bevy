@@ -3,17 +3,12 @@ use bevy::{
 };
 use rand::distributions::{Distribution, Uniform};
 
-const WINDOW_WIDTH: f32 = 1080.0;
-const WINDOW_HEIGHT: f32 = 720.0;
+const WINDOW_SIZE: Vec2 = Vec2::new(1080.0, 720.0);
+const BACKGROUND_COLOR: Color = Color::rgb(1.0, 1.0, 1.0);
 
 const BALL_COUNT: usize = 30;
 const BALL_SIZE: Vec3 = Vec3::new(50.0, 50.0, 0.0);
 const BALL_SPEED: f32 = 400.0;
-
-const LEFT_WALL: f32 = -450.0;
-const RIGHT_WALL: f32 = 450.0;
-const BOTTOM_WALL: f32 = -300.0;
-const TOP_WALL: f32 = 300.0;
 
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
@@ -21,7 +16,6 @@ const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
 const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
 
-const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const BALL_COLOR: Color = Color::rgb(0.9, 0.3, 0.3);
 const TEXT_COLOR: Color = Color::rgb(0.5, 0.5, 1.0);
 const SCORE_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
@@ -43,7 +37,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                resolution: (WINDOW_WIDTH, WINDOW_HEIGHT).into(),
+                resolution: WINDOW_SIZE.into(),
                 ..default()
             }),
             ..default()
@@ -83,8 +77,8 @@ fn setup(
     commands.spawn(Camera2dBundle::default());
 
     let mut rng = rand::thread_rng();
-    let die_width = Uniform::from(LEFT_WALL + BALL_SIZE.x..RIGHT_WALL - BALL_SIZE.x);
-    let die_height = Uniform::from(BOTTOM_WALL + BALL_SIZE.y..TOP_WALL - BALL_SIZE.y);
+    let die_width = Uniform::from(-WINDOW_SIZE.x / 2.0 + BALL_SIZE.x..WINDOW_SIZE.x / 2.0 - BALL_SIZE.x);
+    let die_height = Uniform::from(-WINDOW_SIZE.y / 2.0 + BALL_SIZE.y..WINDOW_SIZE.y / 2.0 - BALL_SIZE.y);
     let die_velocity = Uniform::from(-0.5..0.5);
 
     for _ in 0..BALL_COUNT {
@@ -206,13 +200,13 @@ fn check_for_collisions(mut balls_query: Query<(&mut Velocity, &Transform), With
         let ball_size = ball_transform.scale.truncate();
 
         let left_window_collision =
-            WINDOW_WIDTH / 2.0 < ball_transform.translation.x + ball_size.x / 2.0;
+            WINDOW_SIZE.x / 2.0 < ball_transform.translation.x + ball_size.x / 2.0;
         let right_window_collision =
-            -WINDOW_WIDTH / 2.0 > ball_transform.translation.x - ball_size.x / 2.0;
+            -WINDOW_SIZE.x / 2.0 > ball_transform.translation.x - ball_size.x / 2.0;
         let top_window_collision =
-            WINDOW_HEIGHT / 2.0 < ball_transform.translation.y + ball_size.y / 2.0;
+            WINDOW_SIZE.y / 2.0 < ball_transform.translation.y + ball_size.y / 2.0;
         let bottom_window_collision =
-            -WINDOW_HEIGHT / 2.0 > ball_transform.translation.y - ball_size.y / 2.0;
+            -WINDOW_SIZE.y / 2.0 > ball_transform.translation.y - ball_size.y / 2.0;
 
         if left_window_collision || right_window_collision {
             ball_velocity.x = -ball_velocity.x;
