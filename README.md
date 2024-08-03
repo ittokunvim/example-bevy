@@ -1,146 +1,82 @@
-# Bevy games
+# Example Bevy
 
-このリポジトリには、RustのBevyを使って作成したゲームのソースコードが置かれています。
+ここはRustのBevyで作成したゲームが置かれているリポジトリです。
 
-このソースコードを以下に記されているコマンドを実行することによって、遊ぶことができるようになっています。
+## ゲーム
 
-よければプレイしてみてください。
+以下のリストには作成したゲームと遊ぶ手順が記されています。
 
 ### タイミングゲーム
 
-真ん中にキューをタイミングよく合わせて高得点を狙うゲームです。
-
-以下のコマンドを実行することで、ゲームを開始します。
+真ん中にキューをタイミングよく合わせて高得点を狙うゲーム。
 
 ```bash
+# 遊ぶ
 cargo run --example timing_game
-```
-
-以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
-
-```bash
+# Wasmに変換
 cargo make timing_game
-
-basic-http-server -a 0.0.0.0:4000 ./page
 ```
-
-[ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/timing.rs)
 
 ### クリックゲーム
 
-画面内を跳ね返っているボールをクリックして、どんどんボールを消していくゲームです。
-
-以下のコマンドを実行することで、ゲームを開始します。
+画面内を跳ね返っているボールをクリックして、ボールを全消しを目指すゲーム。
 
 ```bash
+# 遊ぶ
 cargo run --example click_game
-```
-
-以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
-
-```bash
+# Wasmに変換
 cargo make click_game
-
-basic-http-server -a 0.0.0.0:4000 ./page
 ```
-
-[ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/click.rs)
 
 ### 2Dシューティングゲーム
 
-画面上部にいる敵を弾を打って倒すゲームです。
-
-以下のコマンドを実行することで、ゲームを開始します。
+画面上部にいる敵を弾を打って倒すゲーム。
 
 ```bash
+# 遊ぶ
 cargo run --example 2d_shooting
-```
-以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
-
-```bash
+# Wasmに変換
 cargo make 2d_shooting
-
-basic-http-server -a 0.0.0.0:4000 ./page
 ```
-
-[ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/2d_shooting.rs)
 
 ### フロッガー
 
-カエル（プレイヤー）が危険な道を渡り、ゴールに辿り着くというゲームです。
-
-以下のコマンドを実行することで、ゲームを開始します。
+プレイヤー（カエル）を障害物を避けつつ対岸にあるゴールを目指すゲーム。
 
 ```bash
+# 遊ぶ
 cargo run --example frogger
-```
-
-以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
-
-```bash
+# Wasmに変換
 cargo make frogger
-
-basic-http-server -a 0.0.0.0:4000 ./page
 ```
-
-[ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/frogger_game.rs)
-
 ### フラッピーバード
 
-画面のタップによって画面上を飛ぶ鳥の高さを調整し、土管の隙間をぶつけずに飛ばし続けるゲームです。
-
-以下のコマンドを実行することで、ゲームを開始します。
+プレイヤー（鳥）を操作して、障害物を避けて飛ばし続けて高得点を目指すゲーム。
 
 ```bash
+# 遊ぶ
 cargo run --example flappy_bird
-```
-
-以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
-
-```bash
+# Wasmに変換
 cargo make flappy_bird
-
-basic-http-server -a 0.0.0.0:4000 ./page
 ```
-
-[ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/flappy_bird.rs)
 
 ### キャッチゲーム
 
-一般的にボールや他のオブジェクトを捕まえたり、キャッチしたりする能力や技術を試すゲーム。
-
-以下のコマンドを実行することで、ゲームを開始します。
+落ちてくるオブジェクトをキャッチして高得点を目指すゲーム。
 
 ```bash
+# 遊ぶ
 cargo run --example catch_game
-```
-
-以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
-
-```bash
+# Wasmに変換
 cargo make catch_game
-
-basic-http-server -a 0.0.0.0:4000 ./page
 ```
-
-[ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/catch_game.rs)
-
 ### ランアンドジャンプ
 
-一般的にランニングとジャンプのアクションを中心としたゲーム。
-
-以下のコマンドを実行することで、ゲームを開始します。
+プレイヤーを操作して障害物を回避してゴールを目指すゲーム。
 
 ```bash
+# 遊ぶ
 cargo run --example run_and_jump
-```
-
-以下のコマンドを実行することで、ブラウザでゲームを遊ぶことができます。
-
-```bash
+# Wasmに変換
 cargo make run_and_jump
-
-basic-http-server -a 0.0.0.0:4000 ./page
 ```
-
-[ソースコード](https://github.com/ittokunvim/bevy-games/blob/main/examples/run_and_jump/main.rs)

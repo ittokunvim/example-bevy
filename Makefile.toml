@@ -1,3 +1,4 @@
+# timing game
 [tasks.build_release_timing_game]
 command = "cargo"
 args = ["build", "--release", "--target", "wasm32-unknown-unknown", "--example", "timing_game"]
@@ -12,6 +13,7 @@ dependencies = [
 	"build_wasm_timing_game",
 ]
 
+# click_game
 [tasks.build_release_click_game]
 command = "cargo"
 args = ["build", "--release", "--target", "wasm32-unknown-unknown", "--example", "click_game"]
@@ -26,6 +28,7 @@ dependencies = [
 	"build_wasm_click_game",
 ]
 
+# 2d_shooting
 [tasks.build_release_2d_shooting]
 command = "cargo"
 args = ["build", "--release", "--target", "wasm32-unknown-unknown", "--example", "2d_shooting"]
@@ -40,6 +43,7 @@ dependencies = [
 	"build_wasm_2d_shooting",
 ]
 
+# frogger
 [tasks.build_release_frogger]
 command = "cargo"
 args = ["build", "--release", "--target", "wasm32-unknown-unknown", "--example", "frogger"]
@@ -54,6 +58,7 @@ dependencies = [
 	"build_wasm_frogger",
 ]
 
+# flappy bird
 [tasks.build_release_flappy_bird]
 command = "cargo"
 args = ["build", "--release", "--target", "wasm32-unknown-unknown", "--example", "flappy_bird"]
@@ -68,6 +73,7 @@ dependencies = [
 	"build_wasm_flappy_bird",
 ]
 
+# catch game
 [tasks.build_release_catch_game]
 command = "cargo"
 args = ["build", "--release", "--target", "wasm32-unknown-unknown", "--example", "catch_game"]
@@ -82,6 +88,7 @@ dependencies = [
 	"build_wasm_catch_game",
 ]
 
+# run and jump
 [tasks.build_release_run_and_jump]
 command = "cargo"
 args = ["build", "--release", "--target", "wasm32-unknown-unknown", "--example", "run_and_jump"]
