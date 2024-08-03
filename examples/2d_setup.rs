@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{app::AppExit, prelude::*, window::PrimaryWindow};
 
 const GAME_TITLE: &str = "2D Setup";
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 800.0);
@@ -16,6 +16,7 @@ const MAINMENU_GAP: f32 = 80.0;
 enum AppState {
     #[default]
     MainMenu,
+    InGame,
 }
 
 fn main() {
@@ -32,19 +33,26 @@ fn main() {
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         .add_systems(Startup, setup)
+        .add_systems(Update, mainmenu.run_if(in_state(AppState::MainMenu)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
+#[derive(Component)]
+struct MainMenu;
+
+#[derive(Component)]
+struct PlayButton;
+
+#[derive(Component)]
+struct QuitButton;
+
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Camera
     commands.spawn(Camera2dBundle::default());
 
     // MainMunu Title
-    commands.spawn(
+    commands.spawn((
         TextBundle::from_section(
             GAME_TITLE,
             TextStyle {
@@ -58,10 +66,11 @@ fn setup(
             top: Val::Px(WINDOW_SIZE.y / 2.0 - MAINMENU_FONT_SIZE / 2.0 - MAINMENU_SIZE.y / 2.0 + MAINMENU_FONT_SIZE),
             justify_self: JustifySelf::Center,
             ..default()
-        })
-    );
+        }),
+        MainMenu,
+    ));
     // MainMenu Play
-    commands.spawn(
+    commands.spawn((
         TextBundle::from_section(
             MAINMENU_TEXT_PLAY,
             TextStyle {
@@ -75,10 +84,12 @@ fn setup(
             top: Val::Px(WINDOW_SIZE.y / 2.0 - MAINMENU_FONT_SIZE),
             justify_self: JustifySelf::Center,
             ..default()
-        })
-    );
+        }),
+        MainMenu,
+        PlayButton,
+    ));
     // MainMenu Quit
-    commands.spawn(
+    commands.spawn((
         TextBundle::from_section(
             MAINMENU_TEXT_QUIT,
             TextStyle {
@@ -92,15 +103,54 @@ fn setup(
             top: Val::Px(WINDOW_SIZE.y / 2.0 - MAINMENU_FONT_SIZE + MAINMENU_GAP),
             justify_self: JustifySelf::Center,
             ..default()
-        })
-    );
+        }),
+        MainMenu,
+        QuitButton,
+    ));
     // MainMenu Background
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            color: MAINMENU_BG_COLOR,
-            custom_size: Some(MAINMENU_SIZE),
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: MAINMENU_BG_COLOR,
+                custom_size: Some(MAINMENU_SIZE),
+                ..default()
+            },
             ..default()
         },
-        ..default()
-    });
+        MainMenu,
+    ));
+}
+
+fn mainmenu(
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    mouse_event: Res<Input<MouseButton>>,
+    mainmenu_query: Query<Entity, With<MainMenu>>,
+    playbtn_query: Query<&Transform, With<PlayButton>>,
+    quitbtn_query: Query<&Transform, With<QuitButton>>,
+    mut commands: Commands,
+    mut now_state: ResMut<State<AppState>>,
+    mut exit: EventWriter<AppExit>,
+) {
+    let window = window_query.single();
+    let playbtn_transform = playbtn_query.single();
+    let quitbtn_transform = quitbtn_query.single();
+
+    if mouse_event.just_pressed(MouseButton::Left) {
+        let cursor_position = window.cursor_position().unwrap();
+        let playbtn_pos = playbtn_transform.translation.truncate();
+        let quitbtn_pos = quitbtn_transform.translation.truncate();
+        let playbtn_distance = cursor_position.distance(playbtn_pos);
+        let quitbtn_distance = cursor_position.distance(quitbtn_pos);
+
+        if playbtn_distance < 40.0 {
+            for mainmenu_entity in mainmenu_query.iter() {
+                commands.entity(mainmenu_entity).despawn();
+            }
+            *now_state = State::new(AppState::InGame);
+        }
+
+        if quitbtn_distance < 40.0 {
+            exit.send(AppExit);
+        }
+    }
 }
