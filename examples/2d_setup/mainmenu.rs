@@ -100,7 +100,7 @@ pub fn mainmenu_update(
     playbtn_query: Query<&Transform, With<PlayButton>>,
     quitbtn_query: Query<&Transform, With<QuitButton>>,
     mut commands: Commands,
-    mut now_state: ResMut<State<AppState>>,
+    mut app_state: ResMut<NextState<AppState>>,
     mut exit: EventWriter<AppExit>,
 ) {
     let window = window_query.single();
@@ -118,7 +118,7 @@ pub fn mainmenu_update(
             for mainmenu_entity in mainmenu_query.iter() {
                 commands.entity(mainmenu_entity).despawn();
             }
-            *now_state = State::new(AppState::InGame);
+            app_state.set(AppState::InGame);
         }
 
         if quitbtn_distance < 40.0 {
