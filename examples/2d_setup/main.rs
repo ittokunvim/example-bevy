@@ -17,6 +17,8 @@ enum AppState {
     #[default]
     MainMenu,
     InGame,
+    // Pause,
+    // GameOver,
 }
 
 fn main() {
@@ -32,11 +34,14 @@ fn main() {
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
-        .add_systems(Startup, setup)
-        .add_systems(Update, mainmenu.run_if(in_state(AppState::MainMenu)))
+        .add_systems(Startup, mainmenu_setup.run_if(in_state(AppState::MainMenu)))
+        .add_systems(Update, mainmenu_update.run_if(in_state(AppState::MainMenu)))
+        .add_systems(Startup, ingame_setup.run_if(in_state(AppState::MainMenu)))
+        .add_systems(Update, ingame_update.run_if(in_state(AppState::InGame)))
+        // .add_systems(Update, gameover.run_if(in_state(AppState::GameOver)))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
-}
+}   
 
 #[derive(Component)]
 struct MainMenu;
@@ -47,7 +52,7 @@ struct PlayButton;
 #[derive(Component)]
 struct QuitButton;
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn mainmenu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Camera
     commands.spawn(Camera2dBundle::default());
 
@@ -121,7 +126,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 }
 
-fn mainmenu(
+fn mainmenu_update(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mouse_event: Res<Input<MouseButton>>,
     mainmenu_query: Query<Entity, With<MainMenu>>,
@@ -154,3 +159,10 @@ fn mainmenu(
         }
     }
 }
+
+fn ingame_setup() {}
+
+fn ingame_update() {}
+
+// fn gameover() {}
+
