@@ -4,6 +4,7 @@ use bevy_ecs_ldtk::utils::grid_coords_to_translation;
 
 use crate::{
     WINDOW_SIZE,
+    AppState,
     Player,
     Wall,
     Goal,
@@ -16,7 +17,10 @@ pub fn ingame_setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut camera_query: Query<(&mut OrthographicProjection, &mut Transform), With<Camera2d>>,
+    ldtk_project_entities: Query<&Handle<LdtkProject>>,
 ) {
+    if !ldtk_project_entities.is_empty() { return; }
+
     let (mut camera_projection, mut camera_transform) = camera_query.single_mut();
 
     camera_projection.scale = 0.5;
@@ -27,8 +31,6 @@ pub fn ingame_setup(
         ldtk_handle: asset_server.load("ldtk/tile-based-game.ldtk"),
         ..Default::default()
     });
-
-    println!("ingame_setup");
 }
 
 pub fn move_player_from_input(
@@ -110,4 +112,14 @@ pub fn check_goal(
 
         indices.level += 1;
     }
+}
+
+pub fn check_pause(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut app_state: ResMut<NextState<AppState>>
+) {
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        app_state.set(AppState::Pause);
+    }
+
 }
