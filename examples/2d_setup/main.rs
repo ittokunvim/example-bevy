@@ -3,7 +3,10 @@ use bevy_ecs_ldtk::prelude::*;
 
 use std::collections::HashSet;
 
-use crate::mainmenu::{mainmenu_setup, mainmenu_update};
+use crate::mainmenu::{
+    mainmenu_setup,
+    mainmenu_update
+};
 use crate::ingame::{
     ingame_setup,
     move_player_from_input,
@@ -12,11 +15,19 @@ use crate::ingame::{
     check_goal,
     check_pause
 };
-use crate::pause::{pause_setup, pause_update};
+use crate::pause::{
+    pause_setup,
+    pause_update
+};
+use crate::gameover::{
+    gameover_setup,
+    gameover_update,
+};
 
 pub mod mainmenu;
 pub mod ingame;
 pub mod pause;
+pub mod gameover;
 
 pub const GAME_TITLE: &str = "2D Setup";
 pub const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 800.0);
@@ -28,7 +39,7 @@ pub enum AppState {
     MainMenu,
     InGame,
     Pause,
-    // GameOver,
+    GameOver,
 }
 
 #[derive(Default, Component)]
@@ -108,14 +119,18 @@ fn main() {
         .add_systems(Update, mainmenu_update.run_if(in_state(AppState::MainMenu)))
         // ingame
         .add_systems(OnEnter(AppState::InGame), ingame_setup)
-        .add_systems(Update, move_player_from_input.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, translate_grid_coords_entities.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, cache_wall_locations.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, check_goal.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, check_pause.run_if(in_state(AppState::InGame)))
+        .add_systems(Update, (
+            move_player_from_input,
+            translate_grid_coords_entities,
+            cache_wall_locations,
+            check_goal,
+            check_pause,
+        ).run_if(in_state(AppState::InGame)))
         // pause
         .add_systems(OnEnter(AppState::Pause), pause_setup)
         .add_systems(Update, pause_update.run_if(in_state(AppState::Pause)))
-        // .add_systems(Update, gameover.run_if(in_state(AppState::GameOver)))
+        // gameover
+        .add_systems(OnEnter(AppState::GameOver), gameover_setup)
+        .add_systems(Update, gameover_update.run_if(in_state(AppState::GameOver)))
         .run();
 }   

@@ -12,6 +12,7 @@ use crate::{
 };
 
 const GRID_SIZE: i32 = 16;
+const MAX_LEVEL_SELECTION: usize = 3;
 
 pub fn ingame_setup(
     mut commands: Commands,
@@ -99,6 +100,7 @@ pub fn check_goal(
     level_selection: ResMut<LevelSelection>,
     players: Query<&GridCoords, (With<Player>, Changed<GridCoords>)>,
     goals: Query<&GridCoords, With<Goal>>,
+    mut app_state: ResMut<NextState<AppState>>,
 ) {
     if players
         .iter()
@@ -110,13 +112,17 @@ pub fn check_goal(
             _ => panic!("level selection should always be Indices in this game"),
         };
 
-        indices.level += 1;
+        if indices.level < MAX_LEVEL_SELECTION - 1 {
+            indices.level += 1;
+        } else {
+            app_state.set(AppState::GameOver);
+        }
     }
 }
 
 pub fn check_pause(
     keyboard_input: Res<Input<KeyCode>>,
-    mut app_state: ResMut<NextState<AppState>>
+    mut app_state: ResMut<NextState<AppState>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         app_state.set(AppState::Pause);
