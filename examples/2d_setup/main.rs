@@ -31,7 +31,7 @@ pub mod gameover;
 
 pub const GAME_TITLE: &str = "2D Setup";
 pub const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 800.0);
-pub const BACKGROUND_COLOR: Color = Color::rgb(1.0, 1.0, 1.0);
+pub const BACKGROUND_COLOR: Color = Color::rgb(0.255, 0.251, 0.333);
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 pub enum AppState {
