@@ -2,14 +2,61 @@ use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_ecs_ldtk::utils::grid_coords_to_translation;
 
+use std::collections::HashSet;
+
 use crate::{
     WINDOW_SIZE,
     AppState,
-    Player,
-    Wall,
-    Goal,
-    LevelWalls,
 };
+
+#[derive(Default, Component)]
+pub struct Player;
+
+#[derive(Default, Component)]
+pub struct Wall;
+
+#[derive(Default, Component)]
+pub struct Goal;
+
+#[derive(Default, Bundle, LdtkEntity)]
+pub struct PlayerBundle {
+    player: Player,
+    #[sprite_sheet_bundle]
+    sprite_sheet_bundle: SpriteSheetBundle,
+    #[grid_coords]
+    grid_coords: GridCoords,
+}
+
+#[derive(Default, Bundle, LdtkIntCell)]
+pub struct WallBundle {
+    wall: Wall,
+}
+
+#[derive(Default, Bundle, LdtkEntity)]
+pub struct GoalBundle {
+    goal: Goal,
+    #[sprite_sheet_bundle]
+    sprite_sheet_bundle: SpriteSheetBundle,
+    #[grid_coords]
+    grid_coords: GridCoords,
+}
+
+#[derive(Default, Resource)]
+pub struct LevelWalls {
+    wall_locations: HashSet<GridCoords>,
+    level_width: i32,
+    level_height: i32,
+}
+
+impl LevelWalls {
+    fn in_wall(&self, grid_coords: &GridCoords) -> bool {
+        grid_coords.x < 0
+            || grid_coords.y < 0
+            || grid_coords.x >= self.level_width 
+            || grid_coords.y >= self.level_height
+            || self.wall_locations.contains(grid_coords)
+    }
+}
 
 const GRID_SIZE: i32 = 16;
 const MAX_LEVEL_SELECTION: usize = 3;

@@ -1,13 +1,15 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
-use std::collections::HashSet;
-
 use crate::mainmenu::{
     mainmenu_setup,
     mainmenu_update
 };
 use crate::ingame::{
+    PlayerBundle,
+    WallBundle,
+    GoalBundle,
+    LevelWalls,
     ingame_setup,
     move_player_from_input,
     translate_grid_coords_entities,
@@ -40,55 +42,6 @@ pub enum AppState {
     InGame,
     Pause,
     GameOver,
-}
-
-#[derive(Default, Component)]
-pub struct Player;
-
-#[derive(Default, Component)]
-pub struct Wall;
-
-#[derive(Default, Component)]
-pub struct Goal;
-
-#[derive(Default, Bundle, LdtkEntity)]
-pub struct PlayerBundle {
-    player: Player,
-    #[sprite_sheet_bundle]
-    sprite_sheet_bundle: SpriteSheetBundle,
-    #[grid_coords]
-    grid_coords: GridCoords,
-}
-
-#[derive(Default, Bundle, LdtkEntity)]
-pub struct GoalBundle {
-    goal: Goal,
-    #[sprite_sheet_bundle]
-    sprite_sheet_bundle: SpriteSheetBundle,
-    #[grid_coords]
-    grid_coords: GridCoords,
-}
-
-#[derive(Default, Bundle, LdtkIntCell)]
-pub struct WallBundle {
-    wall: Wall,
-}
-
-#[derive(Default, Resource)]
-pub struct LevelWalls {
-    wall_locations: HashSet<GridCoords>,
-    level_width: i32,
-    level_height: i32,
-}
-
-impl LevelWalls {
-    fn in_wall(&self, grid_coords: &GridCoords) -> bool {
-        grid_coords.x < 0
-            || grid_coords.y < 0
-            || grid_coords.x >= self.level_width 
-            || grid_coords.y >= self.level_height
-            || self.wall_locations.contains(grid_coords)
-    }
 }
 
 fn main() {
