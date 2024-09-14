@@ -3,7 +3,7 @@ use bevy_ecs_ldtk::prelude::*;
 
 use crate::mainmenu::{
     mainmenu_setup,
-    mainmenu_update
+    mainmenu_update,
 };
 use crate::ingame::{
     PlayerBundle,
@@ -15,11 +15,11 @@ use crate::ingame::{
     translate_grid_coords_entities,
     cache_wall_locations,
     check_goal,
-    check_pause
+    check_pause,
 };
 use crate::pause::{
     pause_setup,
-    pause_update
+    pause_update,
 };
 use crate::gameover::{
     gameover_setup,

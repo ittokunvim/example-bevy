@@ -1,6 +1,10 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
+use bevy_ecs_ldtk::prelude::*;
 
-use crate::WINDOW_SIZE;
+use crate::{
+    AppState,
+    WINDOW_SIZE,
+};
 
 const FONT_SIZE: f32 = 40.0;
 const FONT_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
@@ -13,6 +17,9 @@ const BACKTITLE_TEXT: &str = "Back to Title";
 
 #[derive(Component)]
 pub struct Gameover;
+
+#[derive(Component)]
+pub struct Restart;
 
 pub fn gameover_setup(
     mut commands: Commands,
@@ -53,6 +60,7 @@ pub fn gameover_setup(
             ..default()
         }),
         Gameover,
+        Restart,
     ));
     // Back to Title
     commands.spawn((
@@ -93,6 +101,36 @@ pub fn gameover_setup(
     ));
 }
 
-pub fn gameover_update() {
-    println!("running gameover_update");
+pub fn gameover_update(
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    mouse_event: Res<Input<MouseButton>>,
+    restart_query: Query<&Transform, With<Restart>>,
+    gameover_query: Query<Entity, With<Gameover>>,
+    level_selection: ResMut<LevelSelection>,
+    mut commands: Commands,
+    mut app_state: ResMut<NextState<AppState>>,
+) {
+    let window = window_query.single();
+    let restart_transform = restart_query.single();
+
+    if mouse_event.just_pressed(MouseButton::Left) {
+        let cursor_position = window.cursor_position().unwrap();
+        let restart_pos = restart_transform.translation.truncate();
+        let restart_distance = cursor_position.distance(restart_pos);
+
+        if restart_distance < 40.0 {
+            // Reset level selection
+            let indices = match level_selection.into_inner() {
+                LevelSelection::Indices(indices) => indices,
+                _ => panic!("level selection should always be Indices in this game"),
+            };
+            indices.level = 0;
+            // Change game state
+            app_state.set(AppState::InGame);
+            // Removed gameover Entities
+            for gameover_entity in gameover_query.iter() {
+                commands.entity(gameover_entity).despawn();
+            }
+        }
+    }
 }
