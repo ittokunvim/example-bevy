@@ -1,8 +1,9 @@
-use std::f32::consts::PI;
-
-use bevy::input::keyboard::KeyboardInput;
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    input::keyboard::KeyboardInput,
+};
 use rand::Rng;
+use std::f32::consts::PI;
 
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
 
@@ -39,7 +40,7 @@ fn main() {
         }))
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         .insert_resource(Scoreboard { score: 0 })
         .add_systems(Startup, setup)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
@@ -110,7 +111,6 @@ fn setup(
             looking_at: Vec3::from(PLAYER_INITIAL_POSITION),
         },
     ));
-
     // Light
     commands.spawn(PointLightBundle {
         transform: Transform::from_xyz(4.0, 10.0, 4.0),
@@ -122,23 +122,17 @@ fn setup(
         },
         ..default()
     });
-
     // Board
-    let cell_scene = asset_server.load("models/Frogger/tile.glb#Scene0");
-
     for i in 0..BOARD_SIZE_I {
         for j in 0..BOARD_SIZE_J {
             commands.spawn(SceneBundle {
                 transform: Transform::from_xyz(i as f32, -0.2, j as f32),
-                scene: cell_scene.clone(),
+                scene: asset_server.load("models/Frogger/tile.glb#Scene0").clone(),
                 ..default()
             });
         }
     }
-
     // Player
-    let player_asset = asset_server.load("models/Frogger/gekota.glb#Scene0");
-
     commands.spawn((
         SceneBundle {
             transform: Transform {
@@ -146,7 +140,7 @@ fn setup(
                 rotation: Quat::from_rotation_y(PI / 2.0),
                 ..default()
             },
-            scene: player_asset,
+            scene: asset_server.load("models/Frogger/gekota.glb#Scene0"),
             ..default()
         },
         Player {
@@ -155,7 +149,6 @@ fn setup(
             move_cooldown: Timer::from_seconds(0.3, TimerMode::Once),
         },
     ));
-
     // Obstacles
     for i in 1..BOARD_SIZE_I - 1 {
         if i % 2 == 0 {
@@ -179,24 +172,20 @@ fn setup(
             Velocity(Vec3::new(0.0, 0.0, i as f32)),
         ));
     }
-
     // Scoreboard
-    let bold_font = asset_server.load("fonts/FiraSans-Bold.ttf");
-    let medium_font = asset_server.load("fonts/FiraMono-Medium.ttf");
-
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
                 "Score: ",
                 TextStyle {
-                    font: bold_font,
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                     font_size: SCOREBOARD_FONT_SIZE,
                     color: TEXT_COLOR,
                     ..default()
                 },
             ),
             TextSection::from_style(TextStyle {
-                font: medium_font,
+                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
                 font_size: SCOREBOARD_FONT_SIZE,
                 color: SCORE_COLOR,
                 ..default()
@@ -210,7 +199,6 @@ fn setup(
         }),
         Scoreboard { score: 0 },
     ));
-
     // Press any key
     commands.spawn((
         TextBundle::from_section(
@@ -233,11 +221,11 @@ fn setup(
 
 fn apply_velocity(
     mut query: Query<(&mut Obstacle, &mut Transform, &Velocity)>,
-    time_step: Res<FixedTime>,
+    time_step: Res<Time<Fixed>>
 ) {
     for (mut obstacle, mut transform, velocity) in &mut query {
         obstacle.j = transform.translation.z;
-        transform.translation.z += velocity.z * time_step.period.as_secs_f32();
+        transform.translation.z += velocity.z * time_step.delta().as_secs_f32();
     }
 }
 
@@ -381,7 +369,7 @@ fn press_any_key(
     mut now_state: ResMut<State<AppState>>,
     mut inkey: ResMut<Input<KeyCode>>,
 ) {
-    for _event in keyboard_event.iter() {
+    for _event in keyboard_event.read() {
         let pressanykey_entity = pressanykey_query.single();
         commands.entity(pressanykey_entity).despawn();
 
