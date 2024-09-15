@@ -21,6 +21,9 @@ pub struct Gameover;
 #[derive(Component)]
 pub struct Restart;
 
+#[derive(Component)]
+pub struct BackTitle;
+
 pub fn gameover_setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -79,6 +82,7 @@ pub fn gameover_setup(
             ..default()
         }),
         Gameover,
+        BackTitle,
     ));
     // Gameover Background
     commands.spawn((
@@ -105,18 +109,23 @@ pub fn gameover_update(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mouse_event: Res<Input<MouseButton>>,
     restart_query: Query<&Transform, With<Restart>>,
+    backtitle_query: Query<&Transform, With<BackTitle>>,
     gameover_query: Query<Entity, With<Gameover>>,
     level_selection: ResMut<LevelSelection>,
     mut commands: Commands,
     mut app_state: ResMut<NextState<AppState>>,
+    mut ldtk_projects: Query<&mut Transform, (With<Handle<LdtkProject>>, Without<Restart>, Without<BackTitle>)>,
 ) {
     let window = window_query.single();
     let restart_transform = restart_query.single();
+    let backtitle_transform = backtitle_query.single();
 
     if mouse_event.just_pressed(MouseButton::Left) {
         let cursor_position = window.cursor_position().unwrap();
         let restart_pos = restart_transform.translation.truncate();
+        let backtitle_pos = backtitle_transform.translation.truncate();
         let restart_distance = cursor_position.distance(restart_pos);
+        let backtitle_distance = cursor_position.distance(backtitle_pos);
 
         if restart_distance < 40.0 {
             // Reset level selection
@@ -127,6 +136,17 @@ pub fn gameover_update(
             indices.level = 0;
             // Change game state
             app_state.set(AppState::InGame);
+            // Removed gameover Entities
+            for gameover_entity in gameover_query.iter() {
+                commands.entity(gameover_entity).despawn();
+            }
+        }
+        else if backtitle_distance < 40.0 {
+            // Change game state
+            app_state.set(AppState::MainMenu);
+            // Change ldtk transform
+            let mut ldtk_projects_transform = ldtk_projects.single_mut();
+            ldtk_projects_transform.translation.x = -99999.0;
             // Removed gameover Entities
             for gameover_entity in gameover_query.iter() {
                 commands.entity(gameover_entity).despawn();

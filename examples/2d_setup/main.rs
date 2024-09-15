@@ -16,6 +16,7 @@ use crate::ingame::{
     cache_wall_locations,
     check_goal,
     check_pause,
+    check_ldtk_transform,
 };
 use crate::pause::{
     pause_setup,
@@ -67,6 +68,7 @@ fn main() {
         .register_ldtk_entity::<PlayerBundle>("Player")
         .register_ldtk_entity::<GoalBundle>("Goal")
         .register_ldtk_int_cell::<WallBundle>(1)
+        .add_systems(Startup, setup_camera)
         // mainmenu
         .add_systems(OnEnter(AppState::MainMenu), mainmenu_setup)
         .add_systems(Update, mainmenu_update.run_if(in_state(AppState::MainMenu)))
@@ -78,6 +80,7 @@ fn main() {
             cache_wall_locations,
             check_goal,
             check_pause,
+            check_ldtk_transform,
         ).run_if(in_state(AppState::InGame)))
         // pause
         .add_systems(OnEnter(AppState::Pause), pause_setup)
@@ -87,3 +90,7 @@ fn main() {
         .add_systems(Update, gameover_update.run_if(in_state(AppState::GameOver)))
         .run();
 }   
+
+fn setup_camera(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
+}

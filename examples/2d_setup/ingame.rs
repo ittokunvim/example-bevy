@@ -67,18 +67,18 @@ pub fn ingame_setup(
     mut camera_query: Query<(&mut OrthographicProjection, &mut Transform), With<Camera2d>>,
     ldtk_project_entities: Query<&Handle<LdtkProject>>,
 ) {
-    if !ldtk_project_entities.is_empty() { return; }
-
     let (mut camera_projection, mut camera_transform) = camera_query.single_mut();
 
     camera_projection.scale = 0.5;
-    camera_transform.translation.x += WINDOW_SIZE.x / 4.0;
-    camera_transform.translation.y += WINDOW_SIZE.y / 4.0;
+    camera_transform.translation.x = WINDOW_SIZE.x / 4.0;
+    camera_transform.translation.y = WINDOW_SIZE.y / 4.0;
 
-    commands.spawn(LdtkWorldBundle {
-        ldtk_handle: asset_server.load("ldtk/tile-based-game.ldtk"),
-        ..Default::default()
-    });
+    if ldtk_project_entities.is_empty() {
+        commands.spawn(LdtkWorldBundle {
+            ldtk_handle: asset_server.load("ldtk/tile-based-game.ldtk"),
+            ..Default::default()
+        });
+    }
 }
 
 pub fn move_player_from_input(
@@ -174,5 +174,13 @@ pub fn check_pause(
     if keyboard_input.just_pressed(KeyCode::Escape) {
         app_state.set(AppState::Pause);
     }
+}
 
+pub fn check_ldtk_transform(mut ldtk_projects: Query<&mut Transform, With<Handle<LdtkProject>>>) {
+    let mut ldtk_projects_transform = ldtk_projects.single_mut();
+
+    if ldtk_projects_transform.translation.x != 0.0 {
+        println!("ldtk_projects_transform changed");
+        ldtk_projects_transform.translation.x = 0.0;
+    }
 }

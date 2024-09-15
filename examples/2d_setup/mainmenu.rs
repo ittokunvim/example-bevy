@@ -1,4 +1,5 @@
 use bevy::{app::AppExit, prelude::*, window::PrimaryWindow};
+use bevy_ecs_ldtk::prelude::*;
 
 use crate::{GAME_TITLE, WINDOW_SIZE, AppState};
 
@@ -19,9 +20,17 @@ pub struct PlayButton;
 #[derive(Component)]
 pub struct QuitButton;
 
-pub fn mainmenu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn mainmenu_setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut camera_query: Query<(&mut OrthographicProjection, &mut Transform), With<Camera2d>>,
+) {
     // Camera
-    commands.spawn(Camera2dBundle::default());
+    let (mut camera_projection, mut camera_transform) = camera_query.single_mut();
+
+    camera_projection.scale = 1.0;
+    camera_transform.translation.x = 0.0;
+    camera_transform.translation.y = 0.0;
 
     // MainMunu Title
     commands.spawn((
@@ -99,6 +108,7 @@ pub fn mainmenu_update(
     mainmenu_query: Query<Entity, With<MainMenu>>,
     playbtn_query: Query<&Transform, With<PlayButton>>,
     quitbtn_query: Query<&Transform, With<QuitButton>>,
+    level_selection: ResMut<LevelSelection>,
     mut commands: Commands,
     mut app_state: ResMut<NextState<AppState>>,
     mut exit: EventWriter<AppExit>,
@@ -118,10 +128,16 @@ pub fn mainmenu_update(
             for mainmenu_entity in mainmenu_query.iter() {
                 commands.entity(mainmenu_entity).despawn();
             }
+
+            let indices = match level_selection.into_inner() {
+                LevelSelection::Indices(indices) => indices,
+                _ => panic!("level selection should always be Indices in this game"),
+            };
+            indices.level = 0;
+
             app_state.set(AppState::InGame);
         }
-
-        if quitbtn_distance < 40.0 {
+        else if quitbtn_distance < 40.0 {
             exit.send(AppExit);
         }
     }
