@@ -5,11 +5,11 @@ use crate::{
     AppState,
 };
 
-const PAUSE_FONT_SIZE: f32 = 40.0;
-const PAUSE_FONT_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
-const PAUSE_BG_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
-const PAUSE_SIZE: Vec2 = Vec2::new(80.0, 80.0);
-const PAUSE_TEXT: &str = "Pause";
+const FONT_SIZE: f32 = 40.0;
+const FONT_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
+const BG_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+const BG_SIZE: Vec2 = Vec2::new(80.0, 80.0);
+const PAUSEBTN_TEXT: &str = "Pause";
 
 #[derive(Component)]
 pub struct Pause;
@@ -21,28 +21,27 @@ pub fn pause_setup(
     // Pause
     commands.spawn((
         TextBundle::from_section(
-            PAUSE_TEXT,
+            PAUSEBTN_TEXT,
             TextStyle {
                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                font_size: PAUSE_FONT_SIZE,
-                color: PAUSE_FONT_COLOR,
+                font_size: FONT_SIZE,
+                color: FONT_COLOR,
             },
         )
         .with_style(Style {
             position_type: PositionType::Relative,
-            top: Val::Px(WINDOW_SIZE.y / 2.0 - PAUSE_FONT_SIZE / 2.0),
+            top: Val::Px(WINDOW_SIZE.y / 2.0 - FONT_SIZE / 2.0),
             justify_self: JustifySelf::Center,
             ..default()
         }),
         Pause,
     ));
- 
     // Pause Background
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
-                color: PAUSE_BG_COLOR,
-                custom_size: Some(PAUSE_SIZE),
+                color: BG_COLOR,
+                custom_size: Some(BG_SIZE),
                 ..default()
             },
             transform: Transform {
@@ -65,10 +64,11 @@ pub fn pause_update(
     mut app_state: ResMut<NextState<AppState>>
 ) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
+        // Changed app state
+        app_state.set(AppState::InGame);
+        // Despawned pause entities
         for pause_entity in pause_query.iter() {
             commands.entity(pause_entity).despawn();
         }
-
-        app_state.set(AppState::InGame);
     }
 }

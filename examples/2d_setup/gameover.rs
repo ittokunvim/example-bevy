@@ -1,4 +1,7 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{
+    prelude::*,
+    window::PrimaryWindow,
+};
 use bevy_ecs_ldtk::prelude::*;
 
 use crate::{
@@ -9,9 +12,9 @@ use crate::{
 const FONT_SIZE: f32 = 40.0;
 const FONT_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const BG_COLOR: Color = Color::rgb(0.317, 0.337, 0.411);
-const GAMEOVER_SIZE: Vec2 = Vec2::new(140.0, 180.0);
+const BG_SIZE: Vec2 = Vec2::new(140.0, 180.0);
+const TEXT_GAP: f32 = 80.0;
 const GAMEOVER_TEXT: &str = "Game Over";
-const GAMEOVER_GAP: f32 = 80.0;
 const RESTART_TEXT: &str = "Restart";
 const BACKTITLE_TEXT: &str = "Back to Title";
 
@@ -40,7 +43,7 @@ pub fn gameover_setup(
         )
         .with_style(Style {
             position_type: PositionType::Relative,
-            top: Val::Px(WINDOW_SIZE.y / 2.0 - FONT_SIZE / 2.0 - GAMEOVER_GAP),
+            top: Val::Px(WINDOW_SIZE.y / 2.0 - FONT_SIZE / 2.0 - TEXT_GAP),
             justify_self: JustifySelf::Center,
             ..default()
         }),
@@ -77,7 +80,7 @@ pub fn gameover_setup(
         )
         .with_style(Style {
             position_type: PositionType::Relative,
-            top: Val::Px(WINDOW_SIZE.y / 2.0 - FONT_SIZE / 2.0 + GAMEOVER_GAP),
+            top: Val::Px(WINDOW_SIZE.y / 2.0 - FONT_SIZE / 2.0 + TEXT_GAP),
             justify_self: JustifySelf::Center,
             ..default()
         }),
@@ -89,7 +92,7 @@ pub fn gameover_setup(
         SpriteBundle {
             sprite: Sprite {
                 color: BG_COLOR,
-                custom_size: Some(GAMEOVER_SIZE),
+                custom_size: Some(BG_SIZE),
                 ..default()
             },
             transform: Transform {
@@ -108,9 +111,9 @@ pub fn gameover_setup(
 pub fn gameover_update(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mouse_event: Res<Input<MouseButton>>,
+    gameover_query: Query<Entity, With<Gameover>>,
     restart_query: Query<&Transform, With<Restart>>,
     backtitle_query: Query<&Transform, With<BackTitle>>,
-    gameover_query: Query<Entity, With<Gameover>>,
     level_selection: ResMut<LevelSelection>,
     mut commands: Commands,
     mut app_state: ResMut<NextState<AppState>>,
@@ -136,7 +139,7 @@ pub fn gameover_update(
             indices.level = 0;
             // Change game state
             app_state.set(AppState::InGame);
-            // Removed gameover Entities
+            // Despawned gameover Entities
             for gameover_entity in gameover_query.iter() {
                 commands.entity(gameover_entity).despawn();
             }
@@ -147,7 +150,7 @@ pub fn gameover_update(
             // Change ldtk transform
             let mut ldtk_projects_transform = ldtk_projects.single_mut();
             ldtk_projects_transform.translation.x = -99999.0;
-            // Removed gameover Entities
+            // Despawned gameover Entities
             for gameover_entity in gameover_query.iter() {
                 commands.entity(gameover_entity).despawn();
             }

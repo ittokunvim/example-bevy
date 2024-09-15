@@ -1,13 +1,17 @@
 use bevy::prelude::*;
-use bevy_ecs_ldtk::prelude::*;
-use bevy_ecs_ldtk::utils::grid_coords_to_translation;
-
+use bevy_ecs_ldtk::{
+    prelude::*,
+    utils::grid_coords_to_translation,
+};
 use std::collections::HashSet;
 
 use crate::{
     WINDOW_SIZE,
     AppState,
 };
+
+const GRID_SIZE: i32 = 16;
+const MAX_LEVEL_SELECTION: usize = 3;
 
 #[derive(Default, Component)]
 pub struct Player;
@@ -58,27 +62,25 @@ impl LevelWalls {
     }
 }
 
-const GRID_SIZE: i32 = 16;
-const MAX_LEVEL_SELECTION: usize = 3;
-
 pub fn ingame_setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut camera_query: Query<(&mut OrthographicProjection, &mut Transform), With<Camera2d>>,
     ldtk_project_entities: Query<&Handle<LdtkProject>>,
 ) {
-    let (mut camera_projection, mut camera_transform) = camera_query.single_mut();
-
-    camera_projection.scale = 0.5;
-    camera_transform.translation.x = WINDOW_SIZE.x / 4.0;
-    camera_transform.translation.y = WINDOW_SIZE.y / 4.0;
-
+    // Ldtk project
     if ldtk_project_entities.is_empty() {
         commands.spawn(LdtkWorldBundle {
             ldtk_handle: asset_server.load("ldtk/tile-based-game.ldtk"),
             ..Default::default()
         });
     }
+    // Camera
+    let (mut camera_projection, mut camera_transform) = camera_query.single_mut();
+
+    camera_projection.scale = 0.5;
+    camera_transform.translation.x = WINDOW_SIZE.x / 4.0;
+    camera_transform.translation.y = WINDOW_SIZE.y / 4.0;
 }
 
 pub fn move_player_from_input(
@@ -161,26 +163,26 @@ pub fn check_goal(
 
         if indices.level < MAX_LEVEL_SELECTION - 1 {
             indices.level += 1;
-        } else {
+        }
+        else {
             app_state.set(AppState::GameOver);
         }
     }
 }
 
-pub fn check_pause(
+pub fn update_ingame(
     keyboard_input: Res<Input<KeyCode>>,
     mut app_state: ResMut<NextState<AppState>>,
+    mut ldtk_projects: Query<&mut Transform, With<Handle<LdtkProject>>>,
 ) {
+    // Changed app state if pressed Esc
     if keyboard_input.just_pressed(KeyCode::Escape) {
         app_state.set(AppState::Pause);
     }
-}
-
-pub fn check_ldtk_transform(mut ldtk_projects: Query<&mut Transform, With<Handle<LdtkProject>>>) {
+    // Reset ldtk transform
     let mut ldtk_projects_transform = ldtk_projects.single_mut();
 
     if ldtk_projects_transform.translation.x != 0.0 {
-        println!("ldtk_projects_transform changed");
         ldtk_projects_transform.translation.x = 0.0;
     }
 }

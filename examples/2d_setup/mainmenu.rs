@@ -1,24 +1,32 @@
-use bevy::{app::AppExit, prelude::*, window::PrimaryWindow};
+use bevy::{
+    app::AppExit,
+    prelude::*,
+    window::PrimaryWindow,
+};
 use bevy_ecs_ldtk::prelude::*;
 
-use crate::{GAME_TITLE, WINDOW_SIZE, AppState};
+use crate::{
+    GAME_TITLE,
+    WINDOW_SIZE,
+    AppState,
+};
 
-const MAINMENU_FONT_SIZE: f32 = 40.0;
-const MAINMENU_FONT_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
-const MAINMENU_BG_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
-const MAINMENU_SIZE: Vec2 = Vec2::new(400.0, 400.0);
-const MAINMENU_TEXT_PLAY: &str = "Play";
-const MAINMENU_TEXT_QUIT: &str = "Quit";
-const MAINMENU_GAP: f32 = 80.0;
-
-#[derive(Component)]
-pub struct MainMenu;
-
-#[derive(Component)]
-pub struct PlayButton;
+const FONT_SIZE: f32 = 40.0;
+const FONT_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
+const BG_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+const SCREEN_SIZE: Vec2 = Vec2::new(400.0, 400.0);
+const PLAYBTN_TEXT: &str = "Play";
+const QUITBTN_TEXT: &str = "Quit";
+const TEXT_GAP: f32 = 100.0;
 
 #[derive(Component)]
-pub struct QuitButton;
+pub struct Mainmenu;
+
+#[derive(Component)]
+pub struct PlayBtn;
+
+#[derive(Component)]
+pub struct QuitBtn;
 
 pub fn mainmenu_setup(
     mut commands: Commands,
@@ -38,76 +46,76 @@ pub fn mainmenu_setup(
             GAME_TITLE,
             TextStyle {
                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                font_size: MAINMENU_FONT_SIZE,
-                color: MAINMENU_FONT_COLOR,
+                font_size: FONT_SIZE,
+                color: FONT_COLOR,
             },
         )
         .with_style(Style {
             position_type: PositionType::Relative,
-            top: Val::Px(WINDOW_SIZE.y / 2.0 - MAINMENU_FONT_SIZE / 2.0 - MAINMENU_SIZE.y / 2.0 + MAINMENU_FONT_SIZE),
+            top: Val::Px(WINDOW_SIZE.y / 2.0 - FONT_SIZE / 2.0 - TEXT_GAP),
             justify_self: JustifySelf::Center,
             ..default()
         }),
-        MainMenu,
+        Mainmenu,
     ));
     // MainMenu Play
     commands.spawn((
         TextBundle::from_section(
-            MAINMENU_TEXT_PLAY,
+            PLAYBTN_TEXT,
             TextStyle {
                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                font_size: MAINMENU_FONT_SIZE,
-                color: MAINMENU_FONT_COLOR,
+                font_size: FONT_SIZE,
+                color: FONT_COLOR,
             },
         )
         .with_style(Style {
             position_type: PositionType::Relative,
-            top: Val::Px(WINDOW_SIZE.y / 2.0 - MAINMENU_FONT_SIZE),
+            top: Val::Px(WINDOW_SIZE.y / 2.0 - FONT_SIZE / 2.0),
             justify_self: JustifySelf::Center,
             ..default()
         }),
-        MainMenu,
-        PlayButton,
+        Mainmenu,
+        PlayBtn,
     ));
     // MainMenu Quit
     commands.spawn((
         TextBundle::from_section(
-            MAINMENU_TEXT_QUIT,
+            QUITBTN_TEXT,
             TextStyle {
                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                font_size: MAINMENU_FONT_SIZE,
-                color: MAINMENU_FONT_COLOR,
+                font_size: FONT_SIZE,
+                color: FONT_COLOR,
             },
         )
         .with_style(Style {
             position_type: PositionType::Relative,
-            top: Val::Px(WINDOW_SIZE.y / 2.0 - MAINMENU_FONT_SIZE + MAINMENU_GAP),
+            top: Val::Px(WINDOW_SIZE.y / 2.0 - FONT_SIZE / 2.0 + TEXT_GAP),
             justify_self: JustifySelf::Center,
             ..default()
         }),
-        MainMenu,
-        QuitButton,
+        Mainmenu,
+        QuitBtn,
     ));
     // MainMenu Background
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
-                color: MAINMENU_BG_COLOR,
-                custom_size: Some(MAINMENU_SIZE),
+                color: BG_COLOR,
+                custom_size: Some(SCREEN_SIZE),
                 ..default()
             },
             ..default()
         },
-        MainMenu,
+        Mainmenu,
     ));
 }
 
 pub fn mainmenu_update(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mouse_event: Res<Input<MouseButton>>,
-    mainmenu_query: Query<Entity, With<MainMenu>>,
-    playbtn_query: Query<&Transform, With<PlayButton>>,
-    quitbtn_query: Query<&Transform, With<QuitButton>>,
+    mainmenu_query: Query<Entity, With<Mainmenu>>,
+    playbtn_query: Query<&Transform, With<PlayBtn>>,
+    quitbtn_query: Query<&Transform, With<QuitBtn>>,
     level_selection: ResMut<LevelSelection>,
     mut commands: Commands,
     mut app_state: ResMut<NextState<AppState>>,
@@ -125,19 +133,21 @@ pub fn mainmenu_update(
         let quitbtn_distance = cursor_position.distance(quitbtn_pos);
 
         if playbtn_distance < 40.0 {
-            for mainmenu_entity in mainmenu_query.iter() {
-                commands.entity(mainmenu_entity).despawn();
-            }
-
+            // Reset game level
             let indices = match level_selection.into_inner() {
                 LevelSelection::Indices(indices) => indices,
                 _ => panic!("level selection should always be Indices in this game"),
             };
             indices.level = 0;
-
+            // Changed app state
             app_state.set(AppState::InGame);
+            // despawned Mainmenu entities
+            for mainmenu_entity in mainmenu_query.iter() {
+                commands.entity(mainmenu_entity).despawn();
+            }
         }
         else if quitbtn_distance < 40.0 {
+            // quit game
             exit.send(AppExit);
         }
     }

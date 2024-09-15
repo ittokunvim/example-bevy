@@ -15,8 +15,7 @@ use crate::ingame::{
     translate_grid_coords_entities,
     cache_wall_locations,
     check_goal,
-    check_pause,
-    check_ldtk_transform,
+    update_ingame,
 };
 use crate::pause::{
     pause_setup,
@@ -34,7 +33,7 @@ pub mod gameover;
 
 pub const GAME_TITLE: &str = "2D Setup";
 pub const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 800.0);
-pub const BACKGROUND_COLOR: Color = Color::rgb(0.255, 0.251, 0.333);
+pub const BG_COLOR: Color = Color::rgb(0.255, 0.251, 0.333);
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 pub enum AppState {
@@ -59,7 +58,7 @@ fn main() {
             .set(ImagePlugin::default_nearest())
         )
         .add_state::<AppState>()
-        .insert_resource(ClearColor(BACKGROUND_COLOR))
+        .insert_resource(ClearColor(BG_COLOR))
         .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         // ldtk setup
         .add_plugins(LdtkPlugin)
@@ -68,6 +67,7 @@ fn main() {
         .register_ldtk_entity::<PlayerBundle>("Player")
         .register_ldtk_entity::<GoalBundle>("Goal")
         .register_ldtk_int_cell::<WallBundle>(1)
+        // setup
         .add_systems(Startup, setup_camera)
         // mainmenu
         .add_systems(OnEnter(AppState::MainMenu), mainmenu_setup)
@@ -79,8 +79,7 @@ fn main() {
             translate_grid_coords_entities,
             cache_wall_locations,
             check_goal,
-            check_pause,
-            check_ldtk_transform,
+            update_ingame,
         ).run_if(in_state(AppState::InGame)))
         // pause
         .add_systems(OnEnter(AppState::Pause), pause_setup)
