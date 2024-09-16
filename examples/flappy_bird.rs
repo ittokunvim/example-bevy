@@ -1,7 +1,9 @@
-use bevy::input::keyboard::KeyboardInput;
-use bevy::prelude::*;
-use bevy::sprite::collide_aabb::collide;
-use bevy::sprite::MaterialMesh2dBundle;
+use bevy::{
+    input::keyboard::KeyboardInput,
+    prelude::*,
+    sprite::collide_aabb::collide,
+    sprite::MaterialMesh2dBundle,
+};
 
 const WINDOW_SIZE: Vec2 = Vec2::new(700.0, 700.0);
 
@@ -55,7 +57,7 @@ fn main() {
         }))
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         .insert_resource(ObstacleSpawnTimer(Timer::from_seconds(
             2.0,
             TimerMode::Repeating,
@@ -105,7 +107,6 @@ fn setup(
 ) {
     // Camera
     commands.spawn(Camera2dBundle::default());
-
     // Player
     commands.spawn((
         MaterialMesh2dBundle {
@@ -124,7 +125,6 @@ fn setup(
             life: PLAYER_LIFE,
         },
     ));
-
     // Scoreboard
     let font_bold: Handle<Font> = asset_server.load("fonts/FiraSans-Bold.ttf");
     let font_medium: Handle<Font> = asset_server.load("fonts/FiraMono-Medium.ttf");
@@ -136,7 +136,6 @@ fn setup(
         };
         TextSection::new(text, style)
     };
-
     commands.spawn((
         TextBundle::from_sections([
             text_closure(font_bold.clone(), "Score: ", TEXT_COLOR),
@@ -155,7 +154,6 @@ fn setup(
             life: PLAYER_LIFE,
         },
     ));
-
     // Press any key
     commands.spawn((
         TextBundle::from_section(
@@ -299,9 +297,9 @@ fn pass_obstacle(
     }
 }
 
-fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
+fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<Time<Fixed>>) {
     for (mut transform, velocity) in &mut query {
-        transform.translation.x += velocity.x * time_step.period.as_secs_f32();
+        transform.translation.x += velocity.x * time_step.delta().as_secs_f32();
     }
 }
 
@@ -321,7 +319,7 @@ fn press_any_key(
     mut now_state: ResMut<State<AppState>>,
     mut inkey: ResMut<Input<KeyCode>>,
 ) {
-    for _event in keyboard_event.iter() {
+    for _event in keyboard_event.read() {
         let pressanykey_entity = pressanykey_query.single();
         commands.entity(pressanykey_entity).despawn();
 
