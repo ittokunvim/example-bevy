@@ -1,8 +1,9 @@
-use bevy::input::keyboard::KeyboardInput;
-use bevy::prelude::*;
-use bevy::sprite::collide_aabb::{collide, Collision};
-use bevy::sprite::MaterialMesh2dBundle;
-
+use bevy::{
+    input::keyboard::KeyboardInput,
+    prelude::*,
+    sprite::collide_aabb::{collide, Collision},
+    sprite::MaterialMesh2dBundle,
+};
 use serde::{Deserialize, Serialize};
 
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
@@ -63,7 +64,7 @@ fn main() {
         }))
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         .insert_resource(StageCount(1))
         .add_systems(Startup, setup_camera)
         .add_systems(Update, press_any_key.run_if(in_state(AppState::MainMenu)))
@@ -126,13 +127,11 @@ fn press_any_key(
     mut inkey: ResMut<Input<KeyCode>>,
 ) {
     if pressanykey_query.is_empty() {
-        let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
-
         commands.spawn((
             TextBundle::from_section(
                 "Press Any Key ...",
                 TextStyle {
-                    font: font_bold,
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                     font_size: PRESSANYKEY_FONT_SIZE,
                     color: PRESSANYKEY_COLOR,
                 },
@@ -147,7 +146,7 @@ fn press_any_key(
         ));
     }
 
-    for _event in keyboard_event.iter() {
+    for _event in keyboard_event.read() {
         if let Ok(pressanykey_entity) = pressanykey_query.get_single() {
             commands.entity(pressanykey_entity).despawn();
 
@@ -248,9 +247,9 @@ fn setup_player(
     ));
 }
 
-fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
+fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<Time<Fixed>>) {
     for (mut transform, velocity) in &mut query {
-        transform.translation.x += velocity.x * time_step.period.as_secs_f32();
+        transform.translation.x += velocity.x * time_step.delta().as_secs_f32();
     }
 }
 
@@ -355,8 +354,6 @@ fn goal_collision(
 }
 
 fn display_gameclear(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
-
     let text_parent = NodeBundle {
         style: Style {
             width: Val::Percent(100.0),
@@ -379,7 +376,7 @@ fn display_gameclear(mut commands: Commands, asset_server: Res<AssetServer>) {
     let text_gameclear = TextBundle::from_sections([TextSection::new(
         "Game Clear",
         TextStyle {
-            font: font_bold.clone(),
+            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
             font_size: RESULT_FONT_SIZE,
             color: GAMECLEAR_FONT_COLOR,
         },
@@ -388,7 +385,7 @@ fn display_gameclear(mut commands: Commands, asset_server: Res<AssetServer>) {
         TextSection::new(
             "Continue [A]   ",
             TextStyle {
-                font: font_bold.clone(),
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                 font_size: RESULT_FONT_SIZE_SMALL,
                 color: GAMECLEAR_FONT_COLOR_SMALL,
             },
@@ -396,7 +393,7 @@ fn display_gameclear(mut commands: Commands, asset_server: Res<AssetServer>) {
         TextSection::new(
             "Next Stage [D]",
             TextStyle {
-                font: font_bold.clone(),
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                 font_size: RESULT_FONT_SIZE_SMALL,
                 color: GAMECLEAR_FONT_COLOR_SMALL,
             },
@@ -428,8 +425,6 @@ fn key_gameclear(
 }
 
 fn display_gameover(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
-
     let text_parent = NodeBundle {
         style: Style {
             width: Val::Percent(100.0),
@@ -453,7 +448,7 @@ fn display_gameover(mut commands: Commands, asset_server: Res<AssetServer>) {
     let text_gameover = TextBundle::from_sections([TextSection::new(
         "Game Over",
         TextStyle {
-            font: font_bold.clone(),
+            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
             font_size: RESULT_FONT_SIZE,
             color: GAMEOVER_FONT_COLOR,
         },
@@ -461,7 +456,7 @@ fn display_gameover(mut commands: Commands, asset_server: Res<AssetServer>) {
     let text_continue = TextBundle::from_sections([TextSection::new(
         "Continue [A]",
         TextStyle {
-            font: font_bold.clone(),
+            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
             font_size: RESULT_FONT_SIZE_SMALL,
             color: GAMEOVER_FONT_COLOR_SMALL,
         },
