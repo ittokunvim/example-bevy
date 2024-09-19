@@ -1,8 +1,9 @@
-use bevy::input::keyboard::KeyboardInput;
-use bevy::prelude::*;
-use bevy::sprite::collide_aabb::collide;
-use bevy::sprite::MaterialMesh2dBundle;
-
+use bevy::{
+    input::keyboard::KeyboardInput,
+    prelude::*,
+    sprite::collide_aabb::collide,
+    sprite::MaterialMesh2dBundle,
+};
 use rand::Rng;
 
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
@@ -52,6 +53,17 @@ struct Scoreboard {
     score: i32,
 }
 
+#[derive(Component)]
+struct PressAnyKey;
+
+#[derive(Component)]
+struct Player;
+
+#[derive(Component)]
+struct Obstacle {
+    point: i32,
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -63,7 +75,7 @@ fn main() {
         }))
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         .insert_resource(GameTimer(Timer::from_seconds(
             GAME_TIME_LIMIT,
             TimerMode::Once,
@@ -93,17 +105,6 @@ fn main() {
         .run();
 }
 
-#[derive(Component)]
-struct PressAnyKey;
-
-#[derive(Component)]
-struct Player;
-
-#[derive(Component)]
-struct Obstacle {
-    point: i32,
-}
-
 fn setup_camera(mut commands: Commands) {
     // Camera
     commands.spawn(Camera2dBundle::default());
@@ -116,14 +117,12 @@ fn setup(
     asset_server: Res<AssetServer>,
 ) {
     // Player
-    let player_y = -WINDOW_SIZE.y / 2.0 + PLAYER_SIZE.y;
-
     commands.spawn((
         MaterialMesh2dBundle {
             mesh: meshes.add(shape::RegularPolygon::new(1.0, 4).into()).into(),
             material: materials.add(ColorMaterial::from(PLAYER_COLOR)),
             transform: Transform {
-                translation: Vec3::new(0.0, player_y, 1.0),
+                translation: Vec3::new(0.0, -WINDOW_SIZE.y / 2.0 + PLAYER_SIZE.y, 1.0),
                 scale: PLAYER_SIZE,
                 ..default()
             },
@@ -131,17 +130,13 @@ fn setup(
         },
         Player,
     ));
-
     // Scoreboard
-    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
-    let font_medium = asset_server.load("fonts/FiraMono-Medium.ttf");
-
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
                 "Time: ",
                 TextStyle {
-                    font: font_bold.clone(),
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                     font_size: SCOREBOARD_FONT_SIZE,
                     color: SCOREBOARD_COLOR,
                 },
@@ -149,7 +144,7 @@ fn setup(
             TextSection::new(
                 GAME_TIME_LIMIT.to_string(),
                 TextStyle {
-                    font: font_medium.clone(),
+                    font: asset_server.load("fonts/FiraMono-Medium.ttf"),
                     font_size: SCOREBOARD_FONT_SIZE,
                     color: SCOREBOARD_COLOR,
                 },
@@ -157,7 +152,7 @@ fn setup(
             TextSection::new(
                 " | Score: ",
                 TextStyle {
-                    font: font_bold.clone(),
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                     font_size: SCOREBOARD_FONT_SIZE,
                     color: SCOREBOARD_COLOR,
                 },
@@ -165,7 +160,7 @@ fn setup(
             TextSection::new(
                 "",
                 TextStyle {
-                    font: font_medium.clone(),
+                    font: asset_server.load("fonts/FiraMono-Medium.ttf"),
                     font_size: SCOREBOARD_FONT_SIZE,
                     color: SCOREBOARD_COLOR,
                 },
@@ -194,13 +189,11 @@ fn press_any_key(
 ) {
     if pressanykey_query.is_empty() {
         // Press any key
-        let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
-
         commands.spawn((
             TextBundle::from_section(
                 "Press Any Key ...",
                 TextStyle {
-                    font: font_bold,
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                     font_size: PRESSANYKEY_FONT_SIZE,
                     color: PRESSANYKEY_COLOR,
                 },
@@ -215,7 +208,7 @@ fn press_any_key(
         ));
     }
 
-    for _event in keyboard_event.iter() {
+    for _event in keyboard_event.read() {
         if let Ok(pressanykey_entity) = pressanykey_query.get_single() {
             commands.entity(pressanykey_entity).despawn();
 
@@ -228,7 +221,7 @@ fn press_any_key(
 fn move_player(
     keyboard_input: Res<Input<KeyCode>>,
     mut player_query: Query<&mut Transform, With<Player>>,
-    time_step: Res<FixedTime>,
+    time_step: Res<Time<Fixed>>
 ) {
     let mut player_transform = player_query.single_mut();
     let mut direction = Vec2::ZERO;
@@ -243,7 +236,7 @@ fn move_player(
 
     // Player x movement
     let new_player_position_x = player_transform.translation.x
-        + direction.x * PLAYER_SPEED * time_step.period.as_secs_f32();
+        + direction.x * PLAYER_SPEED * time_step.delta().as_secs_f32();
     let x_bound = WINDOW_SIZE.x / 2.0 - PLAYER_SIZE.x;
 
     player_transform.translation.x = new_player_position_x.clamp(-x_bound, x_bound);
@@ -371,9 +364,6 @@ fn display_result(
     scoreboard: Res<Scoreboard>,
 ) {
     // Result
-    let font_bold = asset_server.load("fonts/FiraSans-Bold.ttf");
-    let font_medium = asset_server.load("fonts/FiraMono-Medium.ttf");
-
     let result_parent = NodeBundle {
         style: Style {
             width: Val::Percent(100.0),
@@ -397,7 +387,7 @@ fn display_result(
         TextSection::new(
             "Score: ",
             TextStyle {
-                font: font_bold.clone(),
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                 font_size: RESULT_FONT_SIZE,
                 color: RESULT_FONT_COLOR,
             },
@@ -405,7 +395,7 @@ fn display_result(
         TextSection::new(
             scoreboard.score.to_string(),
             TextStyle {
-                font: font_medium.clone(),
+                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
                 font_size: RESULT_FONT_SIZE,
                 color: RESULT_FONT_COLOR,
             },
