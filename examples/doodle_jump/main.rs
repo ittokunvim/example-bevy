@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-
 use serde::{Deserialize, Serialize};
 
 const WINDOW_SIZE: Vec2 = Vec2::new(400.0, 600.0);
@@ -13,9 +12,9 @@ const TILE_GOAL_COLOR: Color = Color::rgb(0.8, 0.8, 0.2);
 enum AppState {
     #[default]
     MainMenu,
-    InGame,
-    GameClear,
-    GameOver,
+    // InGame,
+    // GameClear,
+    // GameOver,
 }
 
 fn main() {
@@ -29,7 +28,7 @@ fn main() {
         }))
         .add_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, setup_tilemap)
         .add_systems(Update, bevy::window::close_on_esc)
