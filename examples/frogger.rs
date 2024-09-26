@@ -23,11 +23,11 @@ const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
 const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
 
-const BACKGROUND_COLOR: Color = Color::rgb(0.1, 0.1, 0.1);
-const OBSTACLE_COLOR: Color = Color::rgb(0.8, 0.7, 0.6);
-const TEXT_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
-const SCORE_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
-const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+const BACKGROUND_COLOR: Color = Color::srgb(0.1, 0.1, 0.1);
+const OBSTACLE_COLOR: Color = Color::srgb(0.8, 0.7, 0.6);
+const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
+const SCORE_COLOR: Color = Color::srgb(0.7, 0.7, 0.7);
+const PRESSANYKEY_COLOR: Color = Color::srgb(0.5, 0.5, 0.5);
 
 fn main() {
     App::new()
@@ -38,7 +38,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_state::<AppState>()
+        .init_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         .insert_resource(Scoreboard { score: 0 })
@@ -54,7 +54,6 @@ fn main() {
         .add_systems(Update, focus_camera.run_if(in_state(AppState::InGame)))
         .add_systems(Update, goal_player.run_if(in_state(AppState::InGame)))
         .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
 
@@ -115,7 +114,7 @@ fn setup(
     commands.spawn(PointLightBundle {
         transform: Transform::from_xyz(4.0, 10.0, 4.0),
         point_light: PointLight {
-            intensity: 3000.0,
+            intensity: 2_000_000.0,
             shadows_enabled: true,
             range: 30.0,
             ..default()
@@ -158,10 +157,8 @@ fn setup(
         let transform_z = rand::thread_rng().gen_range(0..BOARD_SIZE_J) as f32;
         commands.spawn((
             PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube {
-                    size: OBSTACLE_SIZE,
-                })),
-                material: materials.add(OBSTACLE_COLOR.into()),
+                mesh: meshes.add(Cuboid::new(OBSTACLE_SIZE, OBSTACLE_SIZE, OBSTACLE_SIZE)),
+                material: materials.add(OBSTACLE_COLOR),
                 transform: Transform::from_xyz(i as f32, OBSTACLE_SIZE / 2.0, transform_z),
                 ..default()
             },
@@ -263,7 +260,7 @@ fn update_scoreboard(scoreboard: Res<Scoreboard>, mut scoreboard_query: Query<&m
 }
 
 fn move_player(
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut player_query: Query<(&mut Player, &mut Transform), With<Player>>,
     time: Res<Time>,
 ) {
@@ -273,28 +270,28 @@ fn move_player(
         let mut moved = false;
         let mut rotation = 0.0;
 
-        if keyboard_input.any_pressed([KeyCode::W, KeyCode::Up]) {
+        if keyboard_input.any_pressed([KeyCode::KeyW, KeyCode::ArrowUp]) {
             if player.i < BOARD_SIZE_I as f32 - 1.0 {
                 player.i += 1.0;
             }
             rotation = PI / 2.0;
             moved = true;
         }
-        if keyboard_input.any_pressed([KeyCode::S, KeyCode::Down]) {
+        if keyboard_input.any_pressed([KeyCode::KeyS, KeyCode::ArrowDown]) {
             if player.i > 0.0 {
                 player.i -= 1.0;
             }
             rotation = -PI / 2.0;
             moved = true;
         }
-        if keyboard_input.any_pressed([KeyCode::D, KeyCode::Right]) {
+        if keyboard_input.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]) {
             if player.j < BOARD_SIZE_J as f32 - 1.0 {
                 player.j += 1.0;
             }
             rotation = 0.0;
             moved = true;
         }
-        if keyboard_input.any_pressed([KeyCode::A, KeyCode::Left]) {
+        if keyboard_input.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]) {
             if player.j > 0.0 {
                 player.j -= 1.0;
             }
@@ -367,7 +364,7 @@ fn press_any_key(
     pressanykey_query: Query<Entity, With<PressAnyKey>>,
     mut commands: Commands,
     mut now_state: ResMut<State<AppState>>,
-    mut inkey: ResMut<Input<KeyCode>>,
+    mut inkey: ResMut<ButtonInput<KeyCode>>,
 ) {
     for _event in keyboard_event.read() {
         let pressanykey_entity = pressanykey_query.single();
