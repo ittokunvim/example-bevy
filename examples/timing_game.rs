@@ -5,35 +5,35 @@ use bevy::{
 };
 
 const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
-const BACKGROUND_COLOR: Color = Color::rgb(1.0, 1.0, 1.0);
+const BACKGROUND_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
 
 const SLIDER_SIZE: Vec2 = Vec2::new(500.0, 50.0);
-const SLIDER_DEFAULT_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
+const SLIDER_DEFAULT_COLOR: Color = Color::srgb(0.8, 0.8, 0.8);
 const SLIDER_DEFAULT_POINTS: isize = -100;
 
 const SLIDER_OK_RANGE: f32 = 100.0;
-const SLIDER_OK_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
+const SLIDER_OK_COLOR: Color = Color::srgb(0.7, 0.7, 0.7);
 const SLIDER_OK_POINTS: isize = 10;
 
 const SLIDER_GOOD_RANGE: f32 = 60.0;
-const SLIDER_GOOD_COLOR: Color = Color::rgb(0.6, 0.6, 0.6);
+const SLIDER_GOOD_COLOR: Color = Color::srgb(0.6, 0.6, 0.6);
 const SLIDER_GOOD_POINTS: isize = 50;
 
 const SLIDER_PERFECT_RANGE: f32 = 20.0;
-const SLIDER_PERFECT_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+const SLIDER_PERFECT_COLOR: Color = Color::srgb(0.5, 0.5, 0.5);
 const SLIDER_PERFECT_POINTS: isize = 100;
 
 const CUE_SIZE: Vec2 = Vec2::new(5.0, 50.0);
 const CUE_SPEED: f32 = 500.0;
 const INITIAL_CUE_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
-const CUE_COLOR: Color = Color::rgb(0.4, 0.4, 0.4);
+const CUE_COLOR: Color = Color::srgb(0.4, 0.4, 0.4);
 
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 
 const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
 const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
-const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+const PRESSANYKEY_COLOR: Color = Color::srgb(0.5, 0.5, 0.5);
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
@@ -56,7 +56,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_state::<AppState>()
+        .init_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         .insert_resource(Scoreboard { score: 0 })
@@ -65,7 +65,6 @@ fn main() {
         .add_systems(Update, decide_timing.run_if(in_state(AppState::InGame)))
         .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
         .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
 
@@ -160,7 +159,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 TextStyle {
                     font: asset_server.load("fonts/FiraMono-Medium.ttf"),
                     font_size: SCOREBOARD_FONT_SIZE,
-                    color: Color::GRAY,
+                    color: Color::BLACK,
                     ..default()
                 },
             ),
@@ -180,7 +179,7 @@ fn press_any_key(
     pressanykey_query: Query<Entity, With<PressAnyKey>>,
     mut commands: Commands,
     mut now_state: ResMut<State<AppState>>,
-    mut inkey: ResMut<Input<KeyCode>>,
+    mut inkey: ResMut<ButtonInput<KeyCode>>,
 ) {
     for _event in keyboard_event.read() {
         let pressanykey_entity = pressanykey_query.single();
@@ -192,7 +191,7 @@ fn press_any_key(
 }
 
 fn decide_timing(
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut scoreboard: ResMut<Scoreboard>,
     cue_query: Query<&Transform, With<Cue>>,
     mut commands: Commands,
@@ -204,7 +203,7 @@ fn decide_timing(
         // Sends a timing event so that other systems can react to the timing
         commands.spawn(AudioBundle {
             source: asset_server.load("sounds/timing.ogg"),
-            settings: PlaybackSettings::ONCE.with_volume(Volume::new_relative(0.5)),
+            settings: PlaybackSettings::ONCE.with_volume(Volume::new(0.5)),
         });
 
         let cue_translation_x = cue_transform.translation.x;
