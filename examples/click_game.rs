@@ -1,10 +1,13 @@
 use bevy::{
-    input::keyboard::KeyboardInput, prelude::*, sprite::MaterialMesh2dBundle, window::PrimaryWindow,
+    input::keyboard::KeyboardInput,
+    prelude::*,
+    sprite::MaterialMesh2dBundle,
+    window::PrimaryWindow,
 };
 use rand::distributions::{Distribution, Uniform};
 
 const WINDOW_SIZE: Vec2 = Vec2::new(1080.0, 720.0);
-const BACKGROUND_COLOR: Color = Color::rgb(1.0, 1.0, 1.0);
+const BACKGROUND_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
 
 const BALL_COUNT: usize = 30;
 const BALL_SIZE: Vec3 = Vec3::new(50.0, 50.0, 0.0);
@@ -16,10 +19,10 @@ const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 const PRESSANYKEY_FONT_SIZE: f32 = 40.0;
 const PRESSANYKEY_TEXT_PADDING: Val = Val::Px(20.0);
 
-const BALL_COLOR: Color = Color::rgb(0.9, 0.3, 0.3);
-const TEXT_COLOR: Color = Color::rgb(0.5, 0.5, 1.0);
-const SCORE_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
-const PRESSANYKEY_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+const BALL_COLOR: Color = Color::srgb(0.9, 0.3, 0.3);
+const TEXT_COLOR: Color = Color::srgb(0.5, 0.5, 1.0);
+const SCORE_COLOR: Color = Color::srgb(1.0, 0.5, 0.5);
+const PRESSANYKEY_COLOR: Color = Color::srgb(0.5, 0.5, 0.5);
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug, Default, States)]
 enum AppState {
@@ -42,7 +45,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_state::<AppState>()
+        .init_state::<AppState>()
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
         .insert_resource(Scoreboard {
@@ -54,7 +57,6 @@ fn main() {
         .add_systems(Update, check_for_collisions.run_if(in_state(AppState::InGame)))
         .add_systems(Update, apply_velocity.run_if(in_state(AppState::InGame)))
         .add_systems(Update, update_scoreboard.run_if(in_state(AppState::InGame)))
-        .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
 
@@ -75,7 +77,7 @@ fn setup(
 ) {
     // Camera
     commands.spawn(Camera2dBundle::default());
-
+    // Balls
     let mut rng = rand::thread_rng();
     let die_width = Uniform::from(-WINDOW_SIZE.x / 2.0 + BALL_SIZE.x..WINDOW_SIZE.x / 2.0 - BALL_SIZE.x);
     let die_height = Uniform::from(-WINDOW_SIZE.y / 2.0 + BALL_SIZE.y..WINDOW_SIZE.y / 2.0 - BALL_SIZE.y);
@@ -89,7 +91,7 @@ fn setup(
 
         commands.spawn((
             MaterialMesh2dBundle {
-                mesh: meshes.add(shape::Circle::default().into()).into(),
+                mesh: meshes.add(Circle::default()).into(),
                 material: materials.add(ColorMaterial::from(BALL_COLOR)),
                 transform: Transform::from_translation(Vec3::new(ball_pos_x, ball_pos_y, 1.0))
                     .with_scale(BALL_SIZE),
@@ -99,7 +101,6 @@ fn setup(
             Velocity(Vec2::new(ball_velocity_x, ball_velocity_y) * BALL_SPEED),
         ));
     }
-
     // Scoreboard
     commands.spawn((
         TextBundle::from_sections([
@@ -130,7 +131,6 @@ fn setup(
         }),
         Scoreboard { ball_count: 0 },
     ));
-
     // Press any key
     commands.spawn((
         TextBundle::from_section(
@@ -156,7 +156,7 @@ fn press_any_key(
     pressanykey_query: Query<Entity, With<PressAnyKey>>,
     mut commands: Commands,
     mut now_state: ResMut<State<AppState>>,
-    mut inkey: ResMut<Input<KeyCode>>,
+    mut inkey: ResMut<ButtonInput<KeyCode>>,
 ) {
     for _event in keyboard_event.read() {
         let pressanykey_entity = pressanykey_query.single();
@@ -171,7 +171,7 @@ fn mouse_click(
     mut commands: Commands,
     mut scoreboard: ResMut<Scoreboard>,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    mouse_event: Res<Input<MouseButton>>,
+    mouse_event: Res<ButtonInput<MouseButton>>,
     balls_query: Query<(Entity, &Transform), With<Ball>>,
 ) {
     let window = window_query.single();
