@@ -21,6 +21,8 @@ const BOARD_COLOR: Color = Color::srgb(0.8, 0.8, 0.8);
 const ICON_SIZE: Vec2 = Vec2::new(24.0, 24.0);
 const BUTTON_WIDTH: Val = Val::Px(ICON_SIZE.x * 2.0);
 const BUTTON_HEIGHT: Val = Val::Px(ICON_SIZE.y * 2.0);
+const ICON_COLOR_PRESS: Color = Color::srgb(0.3, 0.3, 0.3);
+const ICON_COLOR_HOVER: Color = Color::srgb(0.5, 0.5, 0.5);
 
 const TEXT_FONT_SIZE: f32 = 24.0;
 const TEXT_COLOR: Color = Color::srgb(0.1, 0.1, 0.1);
@@ -49,6 +51,7 @@ fn main() {
         )
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .add_systems(Startup, setup)
+        .add_systems(Update, button_system)
         .run();
 }
 
@@ -68,6 +71,7 @@ fn setup(
     // カメラを生成
     commands.spawn(Camera2d::default());
 
+    // UIを生成
     let font = asset_server.load(PATH_FONT);
     let image = asset_server.load(PATH_IMAGE_FONTAWESOME);
     commands.spawn((
@@ -126,3 +130,23 @@ fn setup(
     ));
 }
 
+/// ボタンが押された時の処理を決める関数
+fn button_system(
+    mut query: Query<(&Interaction, &mut BackgroundColor), (Changed<Interaction>, With<Button>)>,
+) {
+    info_once!("button_system");
+
+    for (interaction, mut color) in &mut query {
+        match *interaction {
+            Interaction::Pressed => {
+                *color = ICON_COLOR_PRESS.into();
+            }
+            Interaction::Hovered => {
+                *color = ICON_COLOR_HOVER.into();
+            }
+            Interaction::None => {
+                *color = BOARD_COLOR.into();
+            }
+        }
+    }
+}
