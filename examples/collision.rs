@@ -80,6 +80,8 @@ fn setup(
 fn check_wall_collisions(
     mut query: Query<(&mut Velocity, &Transform), With<Collision>>,
 ) {
+    info_once!("check_wall_collisions");
+
     for (mut velocity, transform) in query.iter_mut() {
         let left_window_collision =
             WINDOW_SIZE.x / 2.0 < transform.translation.x + BALL_SIZE;
@@ -107,6 +109,8 @@ fn check_ball_collisions(
     mut query: Query<(&mut Velocity, &Transform), With<Collision>>,
     time_step: Res<Time<Fixed>>,
 ) {
+    info_once!("check_ball_collisions");
+
     let mut combinations = query.iter_combinations_mut();
     let ball_size = BALL_SIZE * 2.0;
     while let Some([ball1, ball2]) = combinations.fetch_next() {
@@ -137,6 +141,8 @@ fn apply_velocity(
     mut query: Query<(&mut Transform, &Velocity), With<Ball>>,
     time_step: Res<Time<Fixed>>,
 ) {
+    info_once!("apply_velocity");
+
     for (mut transform, velocity) in &mut query {
         transform.translation.x += velocity.x * time_step.delta().as_secs_f32();
         transform.translation.y += velocity.y * time_step.delta().as_secs_f32();
