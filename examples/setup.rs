@@ -7,7 +7,7 @@ use bevy::{
 const GAMETITLE: &str = "セットアップ";
 const WINDOW_SIZE: Vec2 = Vec2::new(640.0, 480.0);
 const BACKGROUND_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
-const LOG_FILTER: &str = "info,wgpu_core=warn,wgpu_hal=warn,example_bevy=debug";
+const LOG_FILTER: &str = "info,wgpu_core=warn,wgpu_hal=warn,setup=debug";
 
 fn main() {
     App::new()

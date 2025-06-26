@@ -108,31 +108,44 @@ fn setup(
             TextColor(WHITE.into()),
         )
     };
-    // ボタンルートを作成
-    commands.spawn(Node {
-        width: Val::Percent(100.0),
-        height: Val::Percent(100.0),
-        align_items: AlignItems::Center,
-        justify_content: JustifyContent::Center,
-        display: Display::Flex,
-        column_gap: Val::Px(BUTTON_GAP),
-        ..Default::default()
-    })
-    // プレイボタンを生成
-    .with_children(|parent| {
-        parent.spawn((PlayButton, button_node.clone()))
-            .with_child(closure_text_node(BUTTON_PLAY_TEXT));
-    })
-    // ポーズボタンを生成
-    .with_children(|parent| {
-        parent.spawn((PauseButton, button_node.clone()))
-            .with_child(closure_text_node(BUTTON_PAUSE_TEXT));
-    })
-    // ミュートボタンを生成
-    .with_children(|parent| {
-        parent.spawn((MuteButton, button_node.clone()))
-            .with_child(closure_text_node(BUTTON_MUTE_TEXT));
-    });
+    commands.spawn((
+        // ボタンルートを作成
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            display: Display::Flex,
+            column_gap: Val::Px(BUTTON_GAP),
+            ..Default::default()
+        },
+        children![
+            // プレイボタンを生成
+            (
+                PlayButton,
+                button_node.clone(),
+                children![(
+                    closure_text_node(BUTTON_PLAY_TEXT),
+                )],
+            ),
+            // ポーズボタンを生成
+            (
+                PauseButton,
+                button_node.clone(),
+                children![(
+                    closure_text_node(BUTTON_PAUSE_TEXT),
+                )],
+            ),
+            // ミュートボタンを生成
+            (
+                MuteButton,
+                button_node.clone(),
+                children![(
+                    closure_text_node(BUTTON_MUTE_TEXT),
+                )],
+            ),
+        ],
+    ));
 }
 
 /// 再生ボタンが押されたらBGMを再生する
@@ -144,7 +157,7 @@ fn play_bgm(
 
     for interaction in &playbutton_query {
         if *interaction == Interaction::Pressed {
-            if let Ok(audio) = bgm_query.get_single() {
+            if let Ok(audio) = bgm_query.single() {
                 debug!("play bgm");
                 audio.play();
             }
@@ -161,7 +174,7 @@ fn pause_bgm(
 
     for interaction in &pausebutton_query {
         if *interaction == Interaction::Pressed {
-            if let Ok(audio) = bgm_query.get_single() {
+            if let Ok(audio) = bgm_query.single() {
                 debug!("pause bgm");
                 audio.pause();
             }
@@ -172,19 +185,19 @@ fn pause_bgm(
 /// ミュートボタンが押されたらBGMをミュートする
 fn mute_bgm(
     mutebutton_query: Query<&Interaction, (Changed<Interaction>, With<MuteButton>)>,
-    bgm_query: Query<&AudioSink, With<Bgm>>,
+    mut bgm_query: Query<&mut AudioSink, With<Bgm>>,
 ) {
     info_once!("mute_bgm");
 
     for interaction in &mutebutton_query {
         if *interaction == Interaction::Pressed {
-            if let Ok(audio) = bgm_query.get_single() {
-                if audio.volume() < 0.01 {
+            if let Ok(mut audio) = bgm_query.single_mut() {
+                if audio.is_muted() {
                     debug!("unmute bgm");
-                    audio.set_volume(1.0);
+                    audio.unmute();
                 } else {
                     debug!("mute bgm");
-                    audio.set_volume(0.0);
+                    audio.mute();
                 }
             }
         }

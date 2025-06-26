@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::log::LogPlugin;
 
-const GAMETITLE: &str = "Collision";
+const GAMETITLE: &str = "衝突判定";
 const WINDOW_SIZE: Vec2 = Vec2::new(640.0, 480.0);
 const LOG_FILTER: &str = "info,wgpu_core=warn,wgpu_hal=warn,collision=debug";
 const BALL_COUNT: usize = 9;
