@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::log::LogPlugin;
 
-const GAMETITLE: &str = "Velocity";
+const GAMETITLE: &str = "速度";
 const WINDOW_SIZE: Vec2 = Vec2::new(640.0, 480.0);
 const LOG_FILTER: &str = "info,wgpu_core=warn,wgpu_hal=warn,velocity=debug";
 const SQUARE_SIZE: f32 = 40.0;
