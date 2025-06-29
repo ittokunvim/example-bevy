@@ -155,116 +155,112 @@ fn animation(
 }
 
 fn idle_events(
-    mut query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
+    query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     info_once!("idle_events");
 
-    if keyboard_input.just_pressed(KEY_SPRITESHEET_IDLE) {
-        for (mut config, mut sprite) in &mut query {
-            config.frame_timer.reset();
-            (config.first_sprite_index, config.last_sprite_index) = IDLE_INDICES;
-            config.fps = IDLE_FPS;
-            config.frame_timer = AnimationConfig::timer_from_fps(config.fps);
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = IDLE_INDICES.0;
-            }
-        }
-    }
+    handle_animation_event(
+        query,
+        keyboard_input,
+        KEY_SPRITESHEET_IDLE,
+        IDLE_INDICES,
+        IDLE_FPS,
+    );
 }
 
 fn run_events(
-    mut query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
+    query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     info_once!("run_events");
 
-    if keyboard_input.just_pressed(KEY_SPRITESHEET_RUN) {
-        for (mut config, mut sprite) in &mut query {
-            config.frame_timer.reset();
-            (config.first_sprite_index, config.last_sprite_index) = RUN_INDICES;
-            config.fps = RUN_FPS;
-            config.frame_timer = AnimationConfig::timer_from_fps(config.fps);
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = RUN_INDICES.0;
-            }
-        }
-    }
+    handle_animation_event(
+        query,
+        keyboard_input,
+        KEY_SPRITESHEET_RUN,
+        RUN_INDICES,
+        RUN_FPS,
+    );
 }
 
 fn climb_events(
-    mut query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
+    query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     info_once!("climb_events");
 
-    if keyboard_input.just_pressed(KEY_SPRITESHEET_CLIMB) {
-        for (mut config, mut sprite) in &mut query {
-            config.frame_timer.reset();
-            (config.first_sprite_index, config.last_sprite_index) = CLIMB_INDICES;
-            config.fps = CLIMB_FPS;
-            config.frame_timer = AnimationConfig::timer_from_fps(config.fps);
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = CLIMB_INDICES.0;
-            }
-        }
-    }
+    handle_animation_event(
+        query,
+        keyboard_input,
+        KEY_SPRITESHEET_CLIMB,
+        CLIMB_INDICES,
+        CLIMB_FPS,
+    );
 }
 
 fn crouch_events(
-    mut query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
+    query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     info_once!("crouch_events");
 
-    if keyboard_input.just_pressed(KEY_SPRITESHEET_CROUCH) {
-        for (mut config, mut sprite) in &mut query {
-            config.frame_timer.reset();
-            (config.first_sprite_index, config.last_sprite_index) = CROUCH_INDICES;
-            config.fps = CROUCH_FPS;
-            config.frame_timer = AnimationConfig::timer_from_fps(config.fps);
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = CROUCH_INDICES.0;
-            }
-        }
-    }
+    handle_animation_event(
+        query,
+        keyboard_input,
+        KEY_SPRITESHEET_CROUCH,
+        CROUCH_INDICES,
+        CROUCH_FPS,
+    );
 }
 
 fn hurt_events(
-    mut query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
+    query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     info_once!("hurt_events");
 
-    if keyboard_input.just_pressed(KEY_SPRITESHEET_HURT) {
-        for (mut config, mut sprite) in &mut query {
-            config.frame_timer.reset();
-            (config.first_sprite_index, config.last_sprite_index) = HURT_INDICES;
-            config.fps = HURT_FPS;
-            config.frame_timer = AnimationConfig::timer_from_fps(config.fps);
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = HURT_INDICES.0;
-            }
-        }
-    }
+    handle_animation_event(
+        query,
+        keyboard_input,
+        KEY_SPRITESHEET_HURT,
+        HURT_INDICES,
+        HURT_FPS,
+    );
 }
 
 fn jump_events(
-    mut query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
+    query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     info_once!("jump_events");
 
-    if keyboard_input.just_pressed(KEY_SPRITESHEET_JUMP) {
+    handle_animation_event(
+        query,
+        keyboard_input,
+        KEY_SPRITESHEET_JUMP,
+        JUMP_INDICES,
+        JUMP_FPS,
+    );
+}
+ 
+fn handle_animation_event(
+    mut query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    key: KeyCode,
+    indices: (usize, usize),
+    fps: u8,
+) {
+    if keyboard_input.just_pressed(key) {
+        let (first, last) = indices;
         for (mut config, mut sprite) in &mut query {
             config.frame_timer.reset();
-            (config.first_sprite_index, config.last_sprite_index) = JUMP_INDICES;
-            config.fps = JUMP_FPS;
-            config.frame_timer = AnimationConfig::timer_from_fps(config.fps);
+            *config = AnimationConfig::new(first, last, fps);
             if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = JUMP_INDICES.0;
+                atlas.index = indices.0;
+                atlas.index = first;
             }
         }
     }
 }
- 
+
