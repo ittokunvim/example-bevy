@@ -10,10 +10,11 @@ const GAMETITLE: &str = "スプライトシート";
 const WINDOW_SIZE: Vec2 = Vec2::new(640.0, 480.0);
 const LOG_FILTER: &str = "info,wgpu_core=warn,wgpu_hal=warn,spritesheet=debug";
 const PATH_IMAGES_SPRITESHEET: &str = "images/spritesheet.png";
+
 const IMAGE_SIZE: u32 = 32;
 const SIZE: f32 = 64.0;
-const IMAGE_COLUMN: u32 = 4;
-const IMAGE_ROW: u32 = 5;
+const IMAGE_COLUMN: u32 = 6;
+const IMAGE_ROW: u32 = 6;
 const IDLE_INDICES: (usize, usize) = (0, 3);
 const IDLE_FPS: u8 = 4;
 
