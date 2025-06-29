@@ -37,6 +37,7 @@ const CROUCH_FPS: u8 = 3;
 const HURT_FPS: u8 = 2;
 const JUMP_FPS: u8 = 2;
 
+/// ここではスプライト画像によるアニメーションの例が書かれています
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins
@@ -74,6 +75,7 @@ fn main() {
     ;
 }
 
+/// アニメーションを設定するコンポーネント
 #[derive(Component, Debug)]
 struct AnimationConfig {
     first_sprite_index: usize,
@@ -83,6 +85,7 @@ struct AnimationConfig {
 }
 
 impl AnimationConfig {
+    /// アニメーションの初期化を行う関数
     fn new(first: usize, last: usize, fps: u8) -> Self {
         Self {
             first_sprite_index: first,
@@ -92,11 +95,13 @@ impl AnimationConfig {
         }
     }
 
+    /// FPSからタイマーを返す関数
     fn timer_from_fps(fps: u8) -> Timer {
         Timer::new(Duration::from_secs_f32(1.0 / (fps as f32)), TimerMode::Repeating)
     }
 }
 
+/// スプライトシートのセットアップを行う関数
 fn setup(
     mut commands: Commands,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
@@ -130,8 +135,21 @@ fn setup(
         },
         animation_config,
     ));
+
+    // テキストを生成
+    let text = format!(
+        "Idle: {:?}\nRun: {:?}\nClimb: {:?}\nCrouch: {:?}\nHurt: {:?}\nJump: {:?}",
+        KEY_SPRITESHEET_IDLE,
+        KEY_SPRITESHEET_RUN,
+        KEY_SPRITESHEET_CLIMB,
+        KEY_SPRITESHEET_CROUCH,
+        KEY_SPRITESHEET_HURT,
+        KEY_SPRITESHEET_JUMP,
+    );
+    commands.spawn(Text::new(text));
 }
 
+/// スプライトシートのアニメーションを行う関数
 fn animation(
     mut query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     time: Res<Time>,
@@ -139,8 +157,10 @@ fn animation(
     info_once!("animation");
 
     for (mut config, mut sprite) in &mut query {
+        // タイマーを進める
         config.frame_timer.tick(time.delta());
 
+        // タイマーが終わったら、スプライト画像を1コマ進める
         if config.frame_timer.just_finished() {
             if let Some(atlas) = &mut sprite.texture_atlas {
                 if atlas.index == config.last_sprite_index {
@@ -154,6 +174,7 @@ fn animation(
     }
 }
 
+/// 対応のキーが押されたらスプライトシートをアイドルで描画する関数
 fn idle_events(
     query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -169,6 +190,7 @@ fn idle_events(
     );
 }
 
+/// 対応のキーが押されたらスプライトシートをランで描画する関数
 fn run_events(
     query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -184,6 +206,7 @@ fn run_events(
     );
 }
 
+/// 対応のキーが押されたらスプライトシートを登るで描画する関数
 fn climb_events(
     query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -199,6 +222,7 @@ fn climb_events(
     );
 }
 
+/// 対応のキーが押されたらスプライトシートをしゃがむで描画する関数
 fn crouch_events(
     query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -214,6 +238,7 @@ fn crouch_events(
     );
 }
 
+/// 対応のキーが押されたらスプライトシートをダメージで描画する関数
 fn hurt_events(
     query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -229,6 +254,7 @@ fn hurt_events(
     );
 }
 
+/// 対応のキーが押されたらスプライトシートをジャンプで描画する関数
 fn jump_events(
     query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -244,6 +270,7 @@ fn jump_events(
     );
 }
  
+/// 渡されたキーに応じて、アニメーションの変更を行う関数
 fn handle_animation_event(
     mut query: Query<(&mut AnimationConfig, &mut Sprite), With<AnimationConfig>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -254,10 +281,12 @@ fn handle_animation_event(
     if keyboard_input.just_pressed(key) {
         let (first, last) = indices;
         for (mut config, mut sprite) in &mut query {
+            // タイマーをリセット
             config.frame_timer.reset();
+            // アニメーション設定を更新
             *config = AnimationConfig::new(first, last, fps);
+            // スプライトの描画を更新
             if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = indices.0;
                 atlas.index = first;
             }
         }
