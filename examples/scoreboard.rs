@@ -46,6 +46,7 @@ fn main() {
 #[derive(Component, Debug, Deref, DerefMut)]
 struct Score(usize);
 
+/// スコアボードのセットアップを行う関数
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -83,10 +84,12 @@ fn setup(
     ));
 }
 
+/// スコアボードの更新を行う関数
 fn update(
     mut query: Query<(&mut Score, &mut TextSpan), With<Score>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
+    // Aキーが押されたらスコアを加算する
     if keyboard_input.just_pressed(KEY_ADD_SCORE) {
         for (mut score, mut span) in &mut query {
             **score += 1;
